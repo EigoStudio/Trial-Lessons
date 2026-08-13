@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help us Bring the Colors Back!</title>
+<script srx="auth.js"></script>
+  <style>
+    :root {
+      --bg-color: #f4f7fe;
+      --card-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-color);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      user-select: none;
+      overflow-x: hidden;
+    }
+
+    body.grayscale-mode .rainbow-bar,
+    body.grayscale-mode .card,
+    body.grayscale-mode .color-grid {
+      filter: grayscale(100%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      color: #2c3e50;
+      margin: 8px 0 12px 0;
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .rainbow-bar {
+      display: flex;
+      width: 100%;
+      max-width: 480px;
+      height: 24px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #e2e8f0;
+      margin-bottom: 16px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+      border: 2px solid #fff;
+    }
+    .rainbow-segment {
+      flex: 1;
+      opacity: 0.15;
+      transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .rainbow-segment.active {
+      opacity: 1;
+      transform: scaleY(1.1);
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 24px 20px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: var(--card-shadow);
+      text-align: center;
+      margin-bottom: 20px;
+      position: relative;
+      transition: background-color 0.5s ease;
+    }
+    .instruction {
+      font-size: 1.1rem;
+      color: #7f8c8d;
+      margin-bottom: 12px;
+      font-weight: bold;
+    }
+    
+    .target-image {
+      font-size: 5.5rem;
+      margin: 10px 0;
+      display: inline-block;
+      transition: all 0.5s ease;
+    }
+    .target-image.gray {
+      filter: grayscale(100%) opacity(0.35);
+    }
+    .target-image.colored {
+      filter: grayscale(0%) opacity(1);
+      animation: bounce 0.6s ease;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .target-text {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #2c3e50;
+      margin: 10px 0 16px 0;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .btn {
+      border: none;
+      padding: 14px 20px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      border-radius: 50px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+      transition: all 0.2s ease;
+      color: white;
+    }
+    .btn:active {
+      transform: scale(0.94);
+    }
+    .btn-listen {
+      background: linear-gradient(135deg, #3498db, #2980b9);
+    }
+    .btn-speak {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+    }
+    .btn-speak.listening {
+      animation: pulse 1s infinite;
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+    }
+    .btn-record {
+      background: linear-gradient(135deg, #9b59b6, #8e44ad);
+      display: none;
+      border: 3px solid #f1c40f;
+    }
+    .btn-next {
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      font-size: 1.2rem;
+      padding: 16px 28px;
+      display: none;
+      margin: 12px auto 0 auto;
+      animation: bounce-btn 1.5s infinite alternate;
+    }
+    .btn-start {
+      background: linear-gradient(135deg, #ff4d4d, #e67e22);
+      font-size: 1.25rem;
+      padding: 16px 32px;
+    }
+    @keyframes bounce-btn {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.05); }
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+    }
+
+    .feedback {
+      font-size: 1.3rem;
+      font-weight: 800;
+      min-height: 2em;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .success { color: #2ecc71; }
+    .try-again { color: #e67e22; }
+
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .color-tile {
+      aspect-ratio: 1;
+      border-radius: 20px;
+      border: 4px solid #ffffff;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .color-tile:active {
+      transform: scale(0.88);
+    }
+
+    .intro-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(44, 62, 80, 0.94);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 24px;
+      text-align: center;
+      color: white;
+    }
+    .intro-character {
+      font-size: 5.5rem;
+      margin-bottom: 12px;
+      filter: grayscale(100%);
+    }
+    .intro-title {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: #ffbe76;
+      margin-bottom: 8px;
+    }
+    .intro-text {
+      font-size: 1.15rem;
+      line-height: 1.6;
+      max-width: 380px;
+      margin-bottom: 24px;
+      color: #f5f6fa;
+    }
+    .english-msg {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #74b9ff;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .celebration {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 255, 255, 0.96);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(5px);
+    }
+    .celebration h2 {
+      font-size: 2.8rem;
+      color: #2c3e50;
+      margin: 10px 0;
+    }
+    .celebration p {
+      font-size: 1.2rem;
+      color: #7f8c8d;
+      margin-bottom: 24px;
+      font-weight: bold;
+    }
+
+    .confetti-container {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 99;
+      overflow: hidden;
+      display: none;
+    }
+    .confetti-item {
+      position: absolute;
+      top: -10%;
+      font-size: 2rem;
+      animation: confetti-fall 3s linear infinite;
+    }
+    @keyframes confetti-fall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body class="grayscale-mode">
+
+  <h1>🌈 Rainbow Crystal English</h1>
+
+  <div class="rainbow-bar">
+    <div class="rainbow-segment" id="seg-0" style="background:#ff4d4d;"></div>
+    <div class="rainbow-segment" id="seg-1" style="background:#ffd633;"></div>
+    <div class="rainbow-segment" id="seg-2" style="background:#ff69b4;"></div>
+    <div class="rainbow-segment" id="seg-3" style="background:#2ecc71;"></div>
+    <div class="rainbow-segment" id="seg-4" style="background:#ff9f43;"></div>
+    <div class="rainbow-segment" id="seg-5" style="background:#9b59b6;"></div>
+    <div class="rainbow-segment" id="seg-6" style="background:#3498db;"></div>
+  </div>
+
+  <div class="card" id="main-card">
+    <div class="instruction" id="instruction">🔊 おとをきいて、おなじ色のブロックをえらぼう！</div>
+    
+    <div class="target-image gray" id="target-icon">🌹</div>
+    <div class="target-text" id="target-text">a red flower</div>
+    
+    <div class="btn-group">
+      <button class="btn btn-listen" onclick="playAudio()">🔊 おとをきく</button>
+      <button class="btn btn-speak" id="speak-btn" onclick="startListening()">🎤 はなしてみよう</button>
+      <button class="btn btn-record" id="play-user-btn" onclick="playRecordedAudio()">🗣️ じぶんのこえをきく</button>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <button class="btn btn-next" id="next-btn" onclick="nextStage()">つぎのステージへ ➔</button>
+  </div>
+
+  <div class="color-grid" id="color-grid"></div>
+
+  <div class="intro-overlay" id="intro-overlay">
+    <div class="intro-character">🥺🌈</div>
+    <div class="intro-title">たいへん！</div>
+    <span class="english-msg">"Help us bring the colors back!"</span>
+    <div class="intro-text">
+      この世の中から 色が消えてしまったの…！<br>
+      おとをよくきいて、正しい色をぬってあげよう！
+    </div>
+    <button class="btn btn-start" onclick="startGame()">🚀 ぼうけんをはじめる！</button>
+  </div>
+
+  <div class="confetti-container" id="confetti-container"></div>
+
+  <div class="celebration" id="celebration">
+    <div style="font-size: 5rem;">🎉🌈✨</div>
+    <h2>Great Job!</h2>
+    <p>世界に にじの7色が もどってきたよ！</p>
+    <button class="btn btn-listen" style="padding: 16px 32px; font-size: 1.2rem;" onclick="resetGame()">もういっかいあそぶ 🔄</button>
+  </div>
+
+  <script>
+    const masterStages = [
+      { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹", keywords: ["red", "flower", "レッド", "フラワー", "れっど", "ふらわー"] },
+      { color: "Yellow", hex: "#ffd633", bg: "#fffff0", text: "a yellow star", icon: "⭐️", keywords: ["yellow", "star", "イエロー", "スター", "いえろー", "すたー"] },
+      { color: "Pink", hex: "#ff69b4", bg: "#fff0f6", text: "a pink pig", icon: "🐷", keywords: ["pink", "pig", "ピンク", "ピッグ", "ぴんく", "ぴっぐ"] },
+      { color: "Green", hex: "#2ecc71", bg: "#f5fff5", text: "a green tree", icon: "🌳", keywords: ["green", "tree", "グリーン", "ツリー", "ぐりーん", "つりー"] },
+      { color: "Orange", hex: "#ff9f43", bg: "#fff9f5", text: "an orange fish", icon: "🐠", keywords: ["orange", "fish", "オレンジ", "フィッシュ", "おれんじ", "ふぃっしゅ"] },
+      { color: "Purple", hex: "#9b59b6", bg: "#fbf5ff", text: "a purple eggplant", icon: "茄", keywords: ["purple", "eggplant", "パープル", "エッグプラント", "ナス", "なす"] },
+      { color: "Blue", hex: "#3498db", bg: "#f5f9ff", text: "a blue butterfly", icon: "🦋", keywords: ["blue", "butterfly", "ブルー", "バタフライ", "ぶるー", "ばたふらい"] }
+    ];
+
+    let currentStages = [];
+    let currentStage = 0;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordedAudioBlob = null;
+    let persistentAudioStream = null;
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function initAudioContext() {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playStartSound() {
+      initAudioContext();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.3);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+
+    function playSuccessSound() {
+      initAudioContext();
+      const now = audioCtx.currentTime;
+      const osc1 = audioCtx.createOscillator();
+      const gain1 = audioCtx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(659.25, now);
+      gain1.gain.setValueAtTime(0.25, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(830.61, now + 0.12);
+      gain2.gain.setValueAtTime(0.25, now + 0.12);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.start(now + 0.12);
+      osc2.stop(now + 0.5);
+    }
+
+    function playErrorSound() {
+      initAudioContext();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, now);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    }
+
+    function playFanfare() {
+      initAudioContext();
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        const now = audioCtx.currentTime + (idx * 0.11);
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.45);
+      });
+    }
+
+    async function startGame() {
+      playStartSound();
+      currentStages = shuffleArray(masterStages);
+      currentStage = 0;
+
+      try {
+        if (!persistentAudioStream) {
+          persistentAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+      } catch (err) {
+        console.log("マイク許可エラー:", err);
+      }
+
+      const overlay = document.getElementById("intro-overlay");
+      overlay.style.transition = "opacity 0.6s ease";
+      overlay.style.opacity = "0";
+      setTimeout(() => {
+        overlay.style.display = "none";
+        document.body.classList.remove("grayscale-mode");
+        initStage();
+      }, 600);
+    }
+
+    function initStage() {
+      const stage = currentStages[currentStage];
+      
+      const targetIcon = document.getElementById("target-icon");
+      targetIcon.textContent = stage.icon === "茄" ? "🍆" : stage.icon;
+      targetIcon.className = "target-image gray";
+      
+      document.getElementById("target-text").textContent = stage.text;
+      document.getElementById("instruction").textContent = "🔊 おとをきいて、色ブロックをえらぼう！";
+      document.getElementById("feedback").textContent = "";
+      document.getElementById("feedback").className = "feedback";
+      document.getElementById("main-card").style.backgroundColor = "#ffffff";
+      
+      document.getElementById("play-user-btn").style.display = "none";
+      document.getElementById("next-btn").style.display = "none";
+      recordedAudioBlob = null;
+
+      renderColorOnlyTiles();
+      setTimeout(() => playAudio(), 400);
+    }
+
+    function playAudio() {
+      initAudioContext();
+      const stage = currentStages[currentStage];
+      const utterance = new SpeechSynthesisUtterance(stage.text);
+      utterance.lang = "en-US";
+      utterance.rate = 0.78;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        const btn = document.getElementById("speak-btn");
+        btn.classList.add("listening");
+        btn.textContent = "👂 きいているよ...";
+      };
+
+      recognition.onend = () => {
+        const btn = document.getElementById("speak-btn");
+        btn.classList.remove("listening");
+        btn.textContent = "🎤 はなしてみよう";
+        stopVoiceRecording();
+      };
+
+      recognition.onresult = (event) => {
+        const spokenText = event.results[0][0].transcript.toLowerCase();
+        checkAnswer(spokenText);
+      };
+
+      recognition.onerror = () => {
+        stopVoiceRecording();
+        playErrorSound();
+        showFeedback("もういちど 言ってみてね！ 👂", "try-again");
+      };
+    }
+
+    async function startListening() {
+      initAudioContext();
+      if (!recognition) {
+        alert("音声認識に対応していません。下のタイルをタップしてね！");
+        return;
+      }
+      await startVoiceRecording();
+      try {
+        recognition.start();
+      } catch (e) {
+        console.log("音声認識スタート処理:", e);
+      }
+    }
+
+    async function startVoiceRecording() {
+      try {
+        audioChunks = [];
+        if (!persistentAudioStream) {
+          persistentAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+        
+        const options = MediaRecorder.isTypeSupported('audio/webm') 
+          ? { mimeType: 'audio/webm' } 
+          : MediaRecorder.isTypeSupported('audio/mp4') 
+            ? { mimeType: 'audio/mp4' } 
+            : {};
+
+        mediaRecorder = new MediaRecorder(persistentAudioStream, options);
+        
+        mediaRecorder.ondataavailable = e => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
+          document.getElementById("play-user-btn").style.display = "inline-flex";
+        };
+
+        mediaRecorder.start(100);
+      } catch (err) {
+        console.log("マイク録音エラー:", err);
+      }
+    }
+
+    function stopVoiceRecording() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+      }
+    }
+
+    /* ★ Web Audio API (GainNode) を使用して録音ボイスの音量を大幅に増幅再生 */
+    async function playRecordedAudio() {
+      initAudioContext();
+      if (!recordedAudioBlob) {
+        alert("声がうまく録音できませんでした。もう一度喋ってみてね！");
+        return;
+      }
+
+      try {
+        const arrayBuffer = await recordedAudioBlob.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+        const source = audioCtx.createBufferSource();
+        const gainNode = audioCtx.createGain();
+
+        // ★ 音量を2.5倍にアンプ増幅
+        gainNode.gain.value = 2.5;
+
+        source.buffer = audioBuffer;
+        source.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        source.start(0);
+      } catch (e) {
+        console.log("音量増幅再生エラー:", e);
+        // 万が一のアシスト（標準再生）
+        const audioUrl = URL.createObjectURL(recordedAudioBlob);
+        const audio = new Audio(audioUrl);
+        audio.play();
+      }
+    }
+
+    function handleSuccess() {
+      const stage = currentStages[currentStage];
+      playSuccessSound();
+      
+      const targetIcon = document.getElementById("target-icon");
+      targetIcon.className = "target-image colored";
+      document.getElementById("main-card").style.backgroundColor = stage.bg;
+      
+      showFeedback("✨ Great! 色がついたよ！ ✨", "success");
+      document.getElementById(`seg-${currentStage}`).classList.add("active");
+      document.getElementById("instruction").textContent = "🎤 ボタンをおして、こえにだしてみよう！";
+      document.getElementById("next-btn").style.display = "inline-flex";
+    }
+
+    function checkAnswer(input) {
+      const stage = currentStages[currentStage];
+      const isCorrect = stage.keywords.some(kw => input.includes(kw));
+
+      if (isCorrect) {
+        handleSuccess();
+      } else {
+        playErrorSound();
+        showFeedback(`"${input}" かな？ もう一回！ 🎵`, "try-again");
+      }
+    }
+
+    function nextStage() {
+      currentStage++;
+      if (currentStage < currentStages.length) {
+        initStage();
+      } else {
+        showCelebration();
+      }
+    }
+
+    function renderColorOnlyTiles() {
+      const grid = document.getElementById("color-grid");
+      grid.innerHTML = "";
+      
+      const shuffledTiles = shuffleArray(masterStages);
+      const currentCorrectStage = currentStages[currentStage];
+
+      shuffledTiles.forEach((st) => {
+        const tile = document.createElement("div");
+        tile.className = "color-tile";
+        tile.style.backgroundColor = st.hex;
+        tile.onclick = () => {
+          initAudioContext();
+          if (st.color === currentCorrectStage.color) {
+            handleSuccess();
+          } else {
+            playErrorSound();
+            showFeedback("ちがう色だよ！おとをきいてね 🔍", "try-again");
+          }
+        };
+        grid.appendChild(tile);
+      });
+    }
+
+    function showFeedback(text, type) {
+      const fb = document.getElementById("feedback");
+      fb.textContent = text;
+      fb.className = `feedback ${type}`;
+    }
+
+    function showCelebration() {
+      playFanfare();
+      document.getElementById("celebration").style.display = "flex";
+      startConfetti();
+    }
+
+    function startConfetti() {
+      const container = document.getElementById("confetti-container");
+      container.innerHTML = "";
+      container.style.display = "block";
+      const icons = ["🎉", "✨", "🌈", "⭐️", "🎈", "🌸"];
+      for (let i = 0; i < 40; i++) {
+        const item = document.createElement("div");
+        item.className = "confetti-item";
+        item.textContent = icons[Math.floor(Math.random() * icons.length)];
+        item.style.left = Math.random() * 100 + "%";
+        item.style.animationDelay = Math.random() * 2 + "s";
+        item.style.animationDuration = (2.5 + Math.random() * 2) + "s";
+        container.appendChild(item);
+      }
+    }
+
+    function resetGame() {
+      currentStage = 0;
+      document.querySelectorAll(".rainbow-segment").forEach(s => s.classList.remove("active"));
+      document.getElementById("celebration").style.display = "none";
+      document.getElementById("confetti-container").style.display = "none";
+      document.getElementById("intro-overlay").style.display = "flex";
+      document.getElementById("intro-overlay").style.opacity = "1";
+      document.body.classList.add("grayscale-mode");
+    }
+  </script>
+</body>
+</html>
