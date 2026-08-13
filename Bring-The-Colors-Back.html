@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Help us Bring the Colors Back!</title>
-<script srx="auth.js"></script>
+<script src="auth.js"></script>
   <style>
     :root {
       --bg-color: #f4f7fe;
@@ -340,13 +340,14 @@
   </div>
 
   <script>
+    /* オレンジ色のモチーフを「an orange book (📙)」へ修正 */
     const masterStages = [
       { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹", keywords: ["red", "flower", "レッド", "フラワー", "れっど", "ふらわー"] },
       { color: "Yellow", hex: "#ffd633", bg: "#fffff0", text: "a yellow star", icon: "⭐️", keywords: ["yellow", "star", "イエロー", "スター", "いえろー", "すたー"] },
       { color: "Pink", hex: "#ff69b4", bg: "#fff0f6", text: "a pink pig", icon: "🐷", keywords: ["pink", "pig", "ピンク", "ピッグ", "ぴんく", "ぴっぐ"] },
       { color: "Green", hex: "#2ecc71", bg: "#f5fff5", text: "a green tree", icon: "🌳", keywords: ["green", "tree", "グリーン", "ツリー", "ぐりーん", "つりー"] },
-      { color: "Orange", hex: "#ff9f43", bg: "#fff9f5", text: "an orange fish", icon: "🐠", keywords: ["orange", "fish", "オレンジ", "フィッシュ", "おれんじ", "ふぃっしゅ"] },
-      { color: "Purple", hex: "#9b59b6", bg: "#fbf5ff", text: "a purple eggplant", icon: "茄", keywords: ["purple", "eggplant", "パープル", "エッグプラント", "ナス", "なす"] },
+      { color: "Orange", hex: "#ff9f43", bg: "#fff9f5", text: "an orange book", icon: "📙", keywords: ["orange", "book", "オレンジ", "ブック", "おれんじ", "ぶっく", "ほん", "本"] },
+      { color: "Purple", hex: "#9b59b6", bg: "#fbf5ff", text: "a purple eggplant", icon: "🍆", keywords: ["purple", "eggplant", "パープル", "エッグプラント", "ナス", "なus"] },
       { color: "Blue", hex: "#3498db", bg: "#f5f9ff", text: "a blue butterfly", icon: "🦋", keywords: ["blue", "butterfly", "ブルー", "バタフライ", "ぶるー", "ばたふらい"] }
     ];
 
@@ -476,7 +477,7 @@
       const stage = currentStages[currentStage];
       
       const targetIcon = document.getElementById("target-icon");
-      targetIcon.textContent = stage.icon === "茄" ? "🍆" : stage.icon;
+      targetIcon.textContent = stage.icon;
       targetIcon.className = "target-image gray";
       
       document.getElementById("target-text").textContent = stage.text;
@@ -586,7 +587,6 @@
       }
     }
 
-    /* ★ Web Audio API (GainNode) を使用して録音ボイスの音量を大幅に増幅再生 */
     async function playRecordedAudio() {
       initAudioContext();
       if (!recordedAudioBlob) {
@@ -601,7 +601,6 @@
         const source = audioCtx.createBufferSource();
         const gainNode = audioCtx.createGain();
 
-        // ★ 音量を2.5倍にアンプ増幅
         gainNode.gain.value = 2.5;
 
         source.buffer = audioBuffer;
@@ -611,7 +610,6 @@
         source.start(0);
       } catch (e) {
         console.log("音量増幅再生エラー:", e);
-        // 万が一のアシスト（標準再生）
         const audioUrl = URL.createObjectURL(recordedAudioBlob);
         const audio = new Audio(audioUrl);
         audio.play();
