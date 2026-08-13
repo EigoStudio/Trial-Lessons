@@ -2,13 +2,13 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Help us Bring the Colors Back!</title>
-<script src="auth.js"></script>
+  <script src="auth.js"></script>
   <style>
     :root {
       --bg-color: #f4f7fe;
-      --card-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      --card-shadow: 0 6px 18px rgba(0,0,0,0.1);
     }
     *, *::before, *::after {
       box-sizing: border-box;
@@ -17,10 +17,11 @@
       font-family: 'Helvetica Neue', Arial, sans-serif;
       background: var(--bg-color);
       margin: 0;
-      padding: 16px;
+      padding: 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       min-height: 100vh;
       user-select: none;
       overflow-x: hidden;
@@ -35,9 +36,9 @@
     }
 
     h1 {
-      font-size: 1.6rem;
+      font-size: 1.2rem;
       color: #2c3e50;
-      margin: 8px 0 12px 0;
+      margin: 2px 0 6px 0;
       text-align: center;
       font-weight: 800;
     }
@@ -45,12 +46,12 @@
     .rainbow-bar {
       display: flex;
       width: 100%;
-      max-width: 480px;
-      height: 24px;
-      border-radius: 12px;
+      max-width: 420px;
+      height: 16px;
+      border-radius: 8px;
       overflow: hidden;
       background: #e2e8f0;
-      margin-bottom: 16px;
+      margin-bottom: 8px;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
       border: 2px solid #fff;
     }
@@ -66,26 +67,26 @@
 
     .card {
       background: #ffffff;
-      border-radius: 28px;
-      padding: 24px 20px;
+      border-radius: 20px;
+      padding: 12px 16px;
       width: 100%;
-      max-width: 480px;
+      max-width: 420px;
       box-shadow: var(--card-shadow);
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       position: relative;
       transition: background-color 0.5s ease;
     }
     .instruction {
-      font-size: 1.1rem;
+      font-size: 0.95rem;
       color: #7f8c8d;
-      margin-bottom: 12px;
+      margin-bottom: 4px;
       font-weight: bold;
     }
     
     .target-image {
-      font-size: 5.5rem;
-      margin: 10px 0;
+      font-size: 3.8rem;
+      margin: 2px 0;
       display: inline-block;
       transition: all 0.5s ease;
     }
@@ -98,40 +99,40 @@
     }
     @keyframes bounce {
       0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.2); }
+      50% { transform: scale(1.15); }
     }
 
     .target-text {
-      font-size: 2.2rem;
+      font-size: 1.6rem;
       font-weight: 900;
       color: #2c3e50;
-      margin: 10px 0 16px 0;
+      margin: 2px 0 8px 0;
     }
 
     .btn-group {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
+      align-items: center;
+      margin-bottom: 6px;
     }
-    .btn {
+    .btn-icon {
       border: none;
-      padding: 14px 20px;
-      font-size: 1.05rem;
-      font-weight: bold;
-      border-radius: 50px;
+      width: 56px;
+      height: 56px;
+      font-size: 1.8rem;
+      border-radius: 50%;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
       transition: all 0.2s ease;
       color: white;
+      padding: 0;
     }
-    .btn:active {
-      transform: scale(0.94);
+    .btn-icon:active {
+      transform: scale(0.90);
     }
     .btn-listen {
       background: linear-gradient(135deg, #3498db, #2980b9);
@@ -149,33 +150,46 @@
       border: 3px solid #f1c40f;
     }
     .btn-next {
+      border: none;
       background: linear-gradient(135deg, #2ecc71, #27ae60);
-      font-size: 1.2rem;
-      padding: 16px 28px;
+      font-size: 1.5rem;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      color: white;
+      cursor: pointer;
       display: none;
-      margin: 12px auto 0 auto;
+      margin: 6px auto 0 auto;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
       animation: bounce-btn 1.5s infinite alternate;
     }
     .btn-start {
+      border: none;
+      border-radius: 50px;
+      color: white;
       background: linear-gradient(135deg, #ff4d4d, #e67e22);
-      font-size: 1.25rem;
-      padding: 16px 32px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 14px 28px;
+      cursor: pointer;
     }
     @keyframes bounce-btn {
       0% { transform: scale(1); }
-      100% { transform: scale(1.05); }
+      100% { transform: scale(1.1); }
     }
     @keyframes pulse {
       0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
-      70% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
       100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
     }
 
     .feedback {
-      font-size: 1.3rem;
+      font-size: 1.1rem;
       font-weight: 800;
-      min-height: 2em;
-      margin-top: 10px;
+      min-height: 1.4em;
+      margin-top: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -187,15 +201,15 @@
     .color-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+      gap: 8px;
       width: 100%;
-      max-width: 480px;
+      max-width: 420px;
     }
     .color-tile {
       aspect-ratio: 1;
-      border-radius: 20px;
-      border: 4px solid #ffffff;
-      box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+      border-radius: 14px;
+      border: 3px solid #ffffff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       cursor: pointer;
       transition: transform 0.2s ease;
     }
@@ -213,33 +227,33 @@
       align-items: center;
       justify-content: center;
       z-index: 200;
-      padding: 24px;
+      padding: 20px;
       text-align: center;
       color: white;
     }
     .intro-character {
-      font-size: 5.5rem;
-      margin-bottom: 12px;
+      font-size: 4.5rem;
+      margin-bottom: 8px;
       filter: grayscale(100%);
     }
     .intro-title {
-      font-size: 1.8rem;
+      font-size: 1.6rem;
       font-weight: 900;
       color: #ffbe76;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .intro-text {
-      font-size: 1.15rem;
-      line-height: 1.6;
-      max-width: 380px;
-      margin-bottom: 24px;
+      font-size: 1rem;
+      line-height: 1.5;
+      max-width: 360px;
+      margin-bottom: 20px;
       color: #f5f6fa;
     }
     .english-msg {
-      font-size: 1.4rem;
+      font-size: 1.2rem;
       font-weight: 800;
       color: #74b9ff;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       display: block;
     }
 
@@ -255,14 +269,14 @@
       backdrop-filter: blur(5px);
     }
     .celebration h2 {
-      font-size: 2.8rem;
+      font-size: 2.4rem;
       color: #2c3e50;
-      margin: 10px 0;
+      margin: 8px 0;
     }
     .celebration p {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       color: #7f8c8d;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       font-weight: bold;
     }
 
@@ -301,20 +315,20 @@
   </div>
 
   <div class="card" id="main-card">
-    <div class="instruction" id="instruction">🔊 おとをきいて、おなじ色のブロックをえらぼう！</div>
+    <div class="instruction" id="instruction">🔊 おとをきいてね！</div>
     
     <div class="target-image gray" id="target-icon">🌹</div>
     <div class="target-text" id="target-text">a red flower</div>
     
     <div class="btn-group">
-      <button class="btn btn-listen" onclick="playAudio()">🔊 おとをきく</button>
-      <button class="btn btn-speak" id="speak-btn" onclick="startListening()">🎤 はなしてみよう</button>
-      <button class="btn btn-record" id="play-user-btn" onclick="playRecordedAudio()">🗣️ じぶんのこえをきく</button>
+      <button class="btn-icon btn-listen" onclick="playAudio()" aria-label="Listen">🔊</button>
+      <button class="btn-icon btn-speak" id="speak-btn" onclick="startListening()" aria-label="Speak">🎤</button>
+      <button class="btn-icon btn-record" id="play-user-btn" onclick="playRecordedAudio()" aria-label="Play recorded voice">👂</button>
     </div>
 
     <div class="feedback" id="feedback"></div>
 
-    <button class="btn btn-next" id="next-btn" onclick="nextStage()">つぎのステージへ ➔</button>
+    <button class="btn-next" id="next-btn" onclick="nextStage()" aria-label="Next">➔</button>
   </div>
 
   <div class="color-grid" id="color-grid"></div>
@@ -327,20 +341,19 @@
       この世の中から 色が消えてしまったの…！<br>
       おとをよくきいて、正しい色をぬってあげよう！
     </div>
-    <button class="btn btn-start" onclick="startGame()">🚀 ぼうけんをはじめる！</button>
+    <button class="btn-start" onclick="startGame()">🚀 スタート！</button>
   </div>
 
   <div class="confetti-container" id="confetti-container"></div>
 
   <div class="celebration" id="celebration">
-    <div style="font-size: 5rem;">🎉🌈✨</div>
+    <div style="font-size: 4rem;">🎉🌈✨</div>
     <h2>Great Job!</h2>
     <p>世界に にじの7色が もどってきたよ！</p>
-    <button class="btn btn-listen" style="padding: 16px 32px; font-size: 1.2rem;" onclick="resetGame()">もういっかいあそぶ 🔄</button>
+    <button class="btn-start" style="padding: 14px 28px;" onclick="resetGame()">🔄 もういっかい</button>
   </div>
 
   <script>
-    /* Blueのモチーフを「a blue t-shirt (👕)」に変更 */
     const masterStages = [
       { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹", colorKeys: ["red", "レッド", "れっど"], nounKeys: ["flower", "フラワー", "ふらわー"] },
       { color: "Yellow", hex: "#ffd633", bg: "#fffff0", text: "a yellow star", icon: "⭐️", colorKeys: ["yellow", "イエロー", "いえろー"], nounKeys: ["star", "スター", "すたー"] },
@@ -360,6 +373,23 @@
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
+
+    /* ★ 添付ファイルから取り入れた音声選択ロジック ★ */
+    let preferredVoice = null;
+    function loadVoices() {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) return;
+      preferredVoice = 
+          voices.find(v => v.lang === "en-US" && v.name.includes("Google US English")) ||
+          voices.find(v => v.lang === "en-US" && v.name.includes("Samantha")) ||
+          voices.find(v => v.lang.startsWith("en-US") && (v.name.includes("Female") || v.name.includes("Zira"))) ||
+          voices.find(v => v.lang.startsWith("en"));
+    }
+    
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+      loadVoices();
+    }
 
     function shuffleArray(array) {
       const arr = [...array];
@@ -481,7 +511,7 @@
       targetIcon.className = "target-image gray";
       
       document.getElementById("target-text").textContent = stage.text;
-      document.getElementById("instruction").textContent = "🔊 おとをきいて、色ブロックをえらぼう！";
+      document.getElementById("instruction").textContent = "🔊 おとをきいてね！";
       document.getElementById("feedback").textContent = "";
       document.getElementById("feedback").className = "feedback";
       document.getElementById("main-card").style.backgroundColor = "#ffffff";
@@ -494,14 +524,21 @@
       setTimeout(() => playAudio(), 400);
     }
 
-    function playAudio() {
+    /* ★ 共通テキスト読み上げ関数（スピード0.65、ピッチ1.15） ★ */
+    function speakText(text) {
       initAudioContext();
-      const stage = currentStages[currentStage];
-      const utterance = new SpeechSynthesisUtterance(stage.text);
-      utterance.lang = "en-US";
-      utterance.rate = 0.78;
       window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (preferredVoice) utterance.voice = preferredVoice;
+      utterance.lang = "en-US";
+      utterance.rate = 0.65; // ゆっくりめのスピード
+      utterance.pitch = 1.15; // 明るく可愛いトーン
       window.speechSynthesis.speak(utterance);
+    }
+
+    function playAudio() {
+      const stage = currentStages[currentStage];
+      speakText(stage.text);
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -515,13 +552,13 @@
       recognition.onstart = () => {
         const btn = document.getElementById("speak-btn");
         btn.classList.add("listening");
-        btn.textContent = "👂 きいているよ...";
+        btn.textContent = "👂";
       };
 
       recognition.onend = () => {
         const btn = document.getElementById("speak-btn");
         btn.classList.remove("listening");
-        btn.textContent = "🎤 はなしてみよう";
+        btn.textContent = "🎤";
         stopVoiceRecording();
       };
 
@@ -533,15 +570,14 @@
       recognition.onerror = () => {
         stopVoiceRecording();
         playErrorSound();
-        showFeedback("もういちど 言ってみてね！ 👂", "try-again");
+        showFeedback("もういちど！ 👂", "try-again");
       };
     }
 
-    /* ★ 同期処理で1回タップで即起動するよう修正 */
     function startListening() {
       initAudioContext();
       if (!recognition) {
-        alert("音声認識に対応していません。下のタイルをタップしてね！");
+        alert("音声認識に対応していません。色ブロックをタップしてね！");
         return;
       }
       
@@ -557,13 +593,13 @@
     function startVoiceRecording() {
       try {
         audioChunks = [];
-        if (!persistentAudioStream) {
+        if (persistentAudioStream) {
+          initRecorderInstance();
+        } else {
           navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
             persistentAudioStream = stream;
             initRecorderInstance();
           }).catch(err => console.log("マイクストリーム取得エラー:", err));
-        } else {
-          initRecorderInstance();
         }
       } catch (err) {
         console.log("マイク録音エラー:", err);
@@ -585,7 +621,11 @@
 
       mediaRecorder.onstop = () => {
         recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
+        
+        // ★ 録音完了時の挙動：耳ボタンを表示し、音声で「Good job!」と褒める ★
         document.getElementById("play-user-btn").style.display = "inline-flex";
+        showFeedback("Good job! 👏", "success");
+        speakText("Good job!");
       };
 
       mediaRecorder.start(100);
@@ -597,7 +637,6 @@
       }
     }
 
-    /* ★ 増幅なし（1.0倍の標準音量）で再生 */
     async function playRecordedAudio() {
       initAudioContext();
       if (!recordedAudioBlob) {
@@ -612,7 +651,6 @@
         const source = audioCtx.createBufferSource();
         const gainNode = audioCtx.createGain();
 
-        // ★ 大音量スピーカーに対応し、標準音量 (1.0) に変更
         gainNode.gain.value = 1.0;
 
         source.buffer = audioBuffer;
@@ -636,9 +674,9 @@
       targetIcon.className = "target-image colored";
       document.getElementById("main-card").style.backgroundColor = stage.bg;
       
-      showFeedback("✨ Great! 色がついたよ！ ✨", "success");
+      showFeedback("✨ Great! ✨", "success");
       document.getElementById(`seg-${currentStage}`).classList.add("active");
-      document.getElementById("instruction").textContent = "🎤 ボタンをおして、こえにだしてみよう！";
+      document.getElementById("instruction").textContent = "🎤 はなしてみよう！";
       document.getElementById("next-btn").style.display = "inline-flex";
     }
 
@@ -652,7 +690,7 @@
         handleSuccess();
       } else {
         playErrorSound();
-        showFeedback(`"${input}" かな？ もう一回！ 🎵`, "try-again");
+        showFeedback(`もう一回！ 🎵`, "try-again");
       }
     }
 
@@ -682,7 +720,7 @@
             handleSuccess();
           } else {
             playErrorSound();
-            showFeedback("ちがう色だよ！おとをきいてね 🔍", "try-again");
+            showFeedback("ちがう色だよ 🔍", "try-again");
           }
         };
         grid.appendChild(tile);
