@@ -340,7 +340,7 @@
   </div>
 
   <script>
-    /* 判定判定用の色と名詞を分離して定義 */
+    /* Blueのモチーフを「a blue t-shirt (👕)」に変更 */
     const masterStages = [
       { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹", colorKeys: ["red", "レッド", "れっど"], nounKeys: ["flower", "フラワー", "ふらわー"] },
       { color: "Yellow", hex: "#ffd633", bg: "#fffff0", text: "a yellow star", icon: "⭐️", colorKeys: ["yellow", "イエロー", "いえろー"], nounKeys: ["star", "スター", "すたー"] },
@@ -348,7 +348,7 @@
       { color: "Green", hex: "#2ecc71", bg: "#f5fff5", text: "a green tree", icon: "🌳", colorKeys: ["green", "グリーン", "ぐりーん"], nounKeys: ["tree", "ツリー", "つりー", "き", "木"] },
       { color: "Orange", hex: "#ff9f43", bg: "#fff9f5", text: "an orange book", icon: "📙", colorKeys: ["orange", "オレンジ", "おれんじ"], nounKeys: ["book", "ブック", "ぶっく", "ほん", "本"] },
       { color: "Purple", hex: "#9b59b6", bg: "#fbf5ff", text: "a purple eggplant", icon: "🍆", colorKeys: ["purple", "パープル", "ぱーぷる"], nounKeys: ["eggplant", "エッグプラント", "ナス", "なす"] },
-      { color: "Blue", hex: "#3498db", bg: "#f5f9ff", text: "a blue butterfly", icon: "🦋", colorKeys: ["blue", "ブルー", "ぶるー"], nounKeys: ["butterfly", "バタフライ", "ばたふらい", "ちょう", "チョウ"] }
+      { color: "Blue", hex: "#3498db", bg: "#f5f9ff", text: "a blue t-shirt", icon: "👕", colorKeys: ["blue", "ブルー", "ぶるー"], nounKeys: ["t-shirt", "tshirt", "shirt", "Tシャツ", "tシャツ", "ティーシャツ"] }
     ];
 
     let currentStages = [];
@@ -537,13 +537,16 @@
       };
     }
 
-    async function startListening() {
+    /* ★ 同期処理で1回タップで即起動するよう修正 */
+    function startListening() {
       initAudioContext();
       if (!recognition) {
         alert("音声認識に対応していません。下のタイルをタップしてね！");
         return;
       }
-      await startVoiceRecording();
+      
+      startVoiceRecording();
+
       try {
         recognition.start();
       } catch (e) {
@@ -551,34 +554,41 @@
       }
     }
 
-    async function startVoiceRecording() {
+    function startVoiceRecording() {
       try {
         audioChunks = [];
         if (!persistentAudioStream) {
-          persistentAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            persistentAudioStream = stream;
+            initRecorderInstance();
+          }).catch(err => console.log("マイクストリーム取得エラー:", err));
+        } else {
+          initRecorderInstance();
         }
-        
-        const options = MediaRecorder.isTypeSupported('audio/webm') 
-          ? { mimeType: 'audio/webm' } 
-          : MediaRecorder.isTypeSupported('audio/mp4') 
-            ? { mimeType: 'audio/mp4' } 
-            : {};
-
-        mediaRecorder = new MediaRecorder(persistentAudioStream, options);
-        
-        mediaRecorder.ondataavailable = e => {
-          if (e.data.size > 0) audioChunks.push(e.data);
-        };
-
-        mediaRecorder.onstop = () => {
-          recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
-          document.getElementById("play-user-btn").style.display = "inline-flex";
-        };
-
-        mediaRecorder.start(100);
       } catch (err) {
         console.log("マイク録音エラー:", err);
       }
+    }
+
+    function initRecorderInstance() {
+      const options = MediaRecorder.isTypeSupported('audio/webm') 
+        ? { mimeType: 'audio/webm' } 
+        : MediaRecorder.isTypeSupported('audio/mp4') 
+          ? { mimeType: 'audio/mp4' } 
+          : {};
+
+      mediaRecorder = new MediaRecorder(persistentAudioStream, options);
+      
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
+        document.getElementById("play-user-btn").style.display = "inline-flex";
+      };
+
+      mediaRecorder.start(100);
     }
 
     function stopVoiceRecording() {
@@ -587,6 +597,7 @@
       }
     }
 
+    /* ★ 増幅なし（1.0倍の標準音量）で再生 */
     async function playRecordedAudio() {
       initAudioContext();
       if (!recordedAudioBlob) {
@@ -601,7 +612,8 @@
         const source = audioCtx.createBufferSource();
         const gainNode = audioCtx.createGain();
 
-        gainNode.gain.value = 2.5;
+        // ★ 大音量スピーカーに対応し、標準音量 (1.0) に変更
+        gainNode.gain.value = 1.0;
 
         source.buffer = audioBuffer;
         source.connect(gainNode);
@@ -609,7 +621,7 @@
 
         source.start(0);
       } catch (e) {
-        console.log("音量増幅再生エラー:", e);
+        console.log("音声再生エラー:", e);
         const audioUrl = URL.createObjectURL(recordedAudioBlob);
         const audio = new Audio(audioUrl);
         audio.play();
@@ -630,7 +642,6 @@
       document.getElementById("next-btn").style.display = "inline-flex";
     }
 
-    /* 厳格な正誤判定ロジック：色と名詞の両方が含まれていないと不正解 */
     function checkAnswer(input) {
       const stage = currentStages[currentStage];
       
