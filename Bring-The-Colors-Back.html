@@ -374,7 +374,6 @@
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
 
-    /* ★ 添付ファイルから取り入れた音声選択ロジック ★ */
     let preferredVoice = null;
     function loadVoices() {
       const voices = window.speechSynthesis.getVoices();
@@ -524,15 +523,14 @@
       setTimeout(() => playAudio(), 400);
     }
 
-    /* ★ 共通テキスト読み上げ関数（スピード0.65、ピッチ1.15） ★ */
     function speakText(text) {
       initAudioContext();
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       if (preferredVoice) utterance.voice = preferredVoice;
       utterance.lang = "en-US";
-      utterance.rate = 0.65; // ゆっくりめのスピード
-      utterance.pitch = 1.15; // 明るく可愛いトーン
+      utterance.rate = 0.65;
+      utterance.pitch = 1.15;
       window.speechSynthesis.speak(utterance);
     }
 
@@ -570,7 +568,8 @@
       recognition.onerror = () => {
         stopVoiceRecording();
         playErrorSound();
-        showFeedback("もういちど！ 👂", "try-again");
+        showFeedback("Try again! 🎵", "try-again");
+        speakText("Try again!");
       };
     }
 
@@ -621,11 +620,7 @@
 
       mediaRecorder.onstop = () => {
         recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
-        
-        // ★ 録音完了時の挙動：耳ボタンを表示し、音声で「Good job!」と褒める ★
         document.getElementById("play-user-btn").style.display = "inline-flex";
-        showFeedback("Good job! 👏", "success");
-        speakText("Good job!");
       };
 
       mediaRecorder.start(100);
@@ -674,12 +669,15 @@
       targetIcon.className = "target-image colored";
       document.getElementById("main-card").style.backgroundColor = stage.bg;
       
-      showFeedback("✨ Great! ✨", "success");
+      showFeedback("Good job! ✨", "success");
+      speakText("Good job!");
+
       document.getElementById(`seg-${currentStage}`).classList.add("active");
       document.getElementById("instruction").textContent = "🎤 はなしてみよう！";
       document.getElementById("next-btn").style.display = "inline-flex";
     }
 
+    /* 正誤判定とメッセージ発声を連動 */
     function checkAnswer(input) {
       const stage = currentStages[currentStage];
       
@@ -690,7 +688,8 @@
         handleSuccess();
       } else {
         playErrorSound();
-        showFeedback(`もう一回！ 🎵`, "try-again");
+        showFeedback("Try again! 🎵", "try-again");
+        speakText("Try again!");
       }
     }
 
@@ -720,7 +719,8 @@
             handleSuccess();
           } else {
             playErrorSound();
-            showFeedback("ちがう色だよ 🔍", "try-again");
+            showFeedback("Try again! 🔍", "try-again");
+            speakText("Try again!");
           }
         };
         grid.appendChild(tile);
