@@ -340,15 +340,15 @@
   </div>
 
   <script>
-    /* オレンジ色のモチーフを「an orange book (📙)」へ修正 */
+    /* 判定判定用の色と名詞を分離して定義 */
     const masterStages = [
-      { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹", keywords: ["red", "flower", "レッド", "フラワー", "れっど", "ふらわー"] },
-      { color: "Yellow", hex: "#ffd633", bg: "#fffff0", text: "a yellow star", icon: "⭐️", keywords: ["yellow", "star", "イエロー", "スター", "いえろー", "すたー"] },
-      { color: "Pink", hex: "#ff69b4", bg: "#fff0f6", text: "a pink pig", icon: "🐷", keywords: ["pink", "pig", "ピンク", "ピッグ", "ぴんく", "ぴっぐ"] },
-      { color: "Green", hex: "#2ecc71", bg: "#f5fff5", text: "a green tree", icon: "🌳", keywords: ["green", "tree", "グリーン", "ツリー", "ぐりーん", "つりー"] },
-      { color: "Orange", hex: "#ff9f43", bg: "#fff9f5", text: "an orange book", icon: "📙", keywords: ["orange", "book", "オレンジ", "ブック", "おれんじ", "ぶっく", "ほん", "本"] },
-      { color: "Purple", hex: "#9b59b6", bg: "#fbf5ff", text: "a purple eggplant", icon: "🍆", keywords: ["purple", "eggplant", "パープル", "エッグプラント", "ナス", "なus"] },
-      { color: "Blue", hex: "#3498db", bg: "#f5f9ff", text: "a blue butterfly", icon: "🦋", keywords: ["blue", "butterfly", "ブルー", "バタフライ", "ぶるー", "ばたふらい"] }
+      { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹", colorKeys: ["red", "レッド", "れっど"], nounKeys: ["flower", "フラワー", "ふらわー"] },
+      { color: "Yellow", hex: "#ffd633", bg: "#fffff0", text: "a yellow star", icon: "⭐️", colorKeys: ["yellow", "イエロー", "いえろー"], nounKeys: ["star", "スター", "すたー"] },
+      { color: "Pink", hex: "#ff69b4", bg: "#fff0f6", text: "a pink pig", icon: "🐷", colorKeys: ["pink", "ピンク", "ぴんく"], nounKeys: ["pig", "ピッグ", "ぴっぐ", "ぶた", "ブタ"] },
+      { color: "Green", hex: "#2ecc71", bg: "#f5fff5", text: "a green tree", icon: "🌳", colorKeys: ["green", "グリーン", "ぐりーん"], nounKeys: ["tree", "ツリー", "つりー", "き", "木"] },
+      { color: "Orange", hex: "#ff9f43", bg: "#fff9f5", text: "an orange book", icon: "📙", colorKeys: ["orange", "オレンジ", "おれんじ"], nounKeys: ["book", "ブック", "ぶっく", "ほん", "本"] },
+      { color: "Purple", hex: "#9b59b6", bg: "#fbf5ff", text: "a purple eggplant", icon: "🍆", colorKeys: ["purple", "パープル", "ぱーぷる"], nounKeys: ["eggplant", "エッグプラント", "ナス", "なす"] },
+      { color: "Blue", hex: "#3498db", bg: "#f5f9ff", text: "a blue butterfly", icon: "🦋", colorKeys: ["blue", "ブルー", "ぶるー"], nounKeys: ["butterfly", "バタフライ", "ばたふらい", "ちょう", "チョウ"] }
     ];
 
     let currentStages = [];
@@ -425,11 +425,11 @@
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(160, now);
       gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.35);
+      osc.stop(now + 0.4);
     }
 
     function playFanfare() {
@@ -630,11 +630,14 @@
       document.getElementById("next-btn").style.display = "inline-flex";
     }
 
+    /* 厳格な正誤判定ロジック：色と名詞の両方が含まれていないと不正解 */
     function checkAnswer(input) {
       const stage = currentStages[currentStage];
-      const isCorrect = stage.keywords.some(kw => input.includes(kw));
+      
+      const hasColor = stage.colorKeys.some(ck => input.includes(ck));
+      const hasNoun = stage.nounKeys.some(nk => input.includes(nk));
 
-      if (isCorrect) {
+      if (hasColor && hasNoun) {
         handleSuccess();
       } else {
         playErrorSound();
