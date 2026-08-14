@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Help us Bring the Colors Back! (Ver.2 Story Perfect)</title>
+  <title>Help us Bring the Colors Back! (Ver.2 Board Fix)</title>
   <script src="auth.js"></script>
   <style>
     :root {
@@ -502,6 +502,12 @@
       speakBtn.classList.remove("recording");
       isRecording = false;
 
+      // 古いストリームを確実に破棄
+      if (activeStream) {
+        activeStream.getTracks().forEach(t => t.stop());
+        activeStream = null;
+      }
+
       renderColorOnlyTiles();
 
       if (window.speechSynthesis) window.speechSynthesis.cancel();
@@ -524,14 +530,7 @@
       speakText(stage.text);
     }
 
-    async function prepareMic() {
-      if (!activeStream) {
-        try {
-          activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        } catch(e){}
-      }
-    }
-
+    /* ★ マイク録音処理（シンプル化） ★ */
     async function toggleRecording() {
       initAudioContext();
       if (window.speechSynthesis) window.speechSynthesis.cancel();
@@ -540,9 +539,8 @@
 
       if (!isRecording) {
         try {
-          if (!activeStream) {
-            activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          }
+          // ボタンタップ時に直接アクセス要求
+          activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           audioChunks = [];
 
           let options = {};
@@ -585,6 +583,7 @@
 
         } catch (err) {
           console.log("マイク起動エラー:", err);
+          alert("ブラウザのマイク許可を確認してください。");
         }
 
       } else {
@@ -598,7 +597,7 @@
       }
     }
 
-    /* ★ 自分の声の再生後に「Good job! 〇〇 is back!」のお祝いボイスを流す ★ */
+    /* ★ 自分の声の再生後に「Good job! 〇〇 is back!」のお祝いボイス ★ */
     function playRecordedAudio() {
       initAudioContext();
       const player = document.getElementById("user-audio-player");
@@ -607,14 +606,11 @@
       const stage = currentStages[currentStage];
       player.currentTime = 0;
       
-      // 自分の声が再生し終わったタイミングを検知
       player.onended = () => {
         const storyVoice = `Good job! ${stage.color} is back! Now, let's save another color!`;
         document.getElementById("instruction").textContent = `${stage.color} is back! ✨`;
         
-        // お祝いボイス再生！
         speakText(storyVoice, () => {
-          // ボイスが終わったら「次へ」ボタンを表示
           document.getElementById("next-btn").style.display = "inline-flex";
         });
       };
@@ -624,7 +620,6 @@
       });
     }
 
-    /* ★ 正解して色が戻った時の処理 ★ */
     function handleSuccess() {
       const stage = currentStages[currentStage];
       playSuccessSound();
@@ -634,8 +629,6 @@
       document.getElementById("main-card").style.backgroundColor = stage.bg;
       
       document.getElementById("instruction").textContent = "Say it! 🎤";
-      prepareMic();
-
       document.getElementById(`seg-${currentStage}`).classList.add("active");
     }
 
