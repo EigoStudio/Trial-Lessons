@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Help us Bring the Colors Back! (Ver.2 Board Fix)</title>
+  <title>Help us Bring the Colors Back! (Ver.2 Board)</title>
   <script src="auth.js"></script>
   <style>
     :root {
@@ -78,10 +78,11 @@
       transition: background-color 0.5s ease;
     }
     .instruction {
-      font-size: 0.95rem;
-      color: #7f8c8d;
+      font-size: 1.1rem;
+      color: #e67e22;
       margin-bottom: 4px;
-      font-weight: bold;
+      font-weight: 900;
+      letter-spacing: 0.5px;
     }
     
     .target-image {
@@ -314,7 +315,8 @@
   </div>
 
   <div class="card" id="main-card">
-    <div class="instruction" id="instruction">🔊 おとをきいて 🎤 こえを吹き込もう！</div>
+    <!-- 指示文の文言を変更 -->
+    <div class="instruction" id="instruction">Listen! 🔊</div>
     
     <div class="target-image gray" id="target-icon">🌹</div>
     <div class="target-text" id="target-text">a red flower</div>
@@ -489,7 +491,7 @@
       targetIcon.className = "target-image gray";
       
       document.getElementById("target-text").textContent = stage.text;
-      document.getElementById("instruction").textContent = "🔊 おとをきいて 🎤 こえを吹き込もう！";
+      document.getElementById("instruction").textContent = "Listen! 🔊";
       document.getElementById("feedback").textContent = "";
       document.getElementById("feedback").className = "feedback";
       document.getElementById("main-card").style.backgroundColor = "#ffffff";
@@ -521,9 +523,10 @@
     function playAudio() {
       const stage = currentStages[currentStage];
       speakText(stage.text);
+      // 音を聞いた後は「色を選ぼう！」に切り替え
+      document.getElementById("instruction").textContent = "Choose the color! 🎨";
     }
 
-    /* ★ RICOH電子黒板特化型：マイク録音・トラック強制解放処理 ★ */
     async function toggleRecording() {
       initAudioContext();
       if (window.speechSynthesis) window.speechSynthesis.cancel();
@@ -531,13 +534,10 @@
       const speakBtn = document.getElementById("speak-btn");
 
       if (!isRecording) {
-        // 録音スタート
         try {
-          // 電子黒板用に毎回フレッシュなストリームを取得
           activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           audioChunks = [];
 
-          // RICOH用フォーマット選定
           let options = {};
           if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
             options = { mimeType: 'audio/webm;codecs=opus' };
@@ -552,7 +552,6 @@
           };
 
           mediaRecorder.onstop = () => {
-            // 1. 録音データをBlob化
             const mimeType = mediaRecorder ? mediaRecorder.mimeType : 'audio/wav';
             const blob = new Blob(audioChunks, { type: mimeType });
             
@@ -562,30 +561,26 @@
             const player = document.getElementById("user-audio-player");
             player.src = recordedAudioUrl;
 
-            // 2. 電子黒板のスピーカーを解放するため、マイクの物理トラックを完全に停止する！
             if (activeStream) {
               activeStream.getTracks().forEach(track => track.stop());
               activeStream = null;
             }
 
-            // 3. 再生ボタンを表示
             document.getElementById("play-btn").style.display = "inline-flex";
-            showFeedback("▶️ ボタンでおとをきこう！", "success");
+            document.getElementById("instruction").textContent = "Listen to your voice! 🎵";
           };
 
           mediaRecorder.start(100);
           isRecording = true;
           speakBtn.textContent = "👂";
           speakBtn.classList.add("recording");
-          showFeedback("きいているよ... 🎤", "success");
+          document.getElementById("instruction").textContent = "Recording... 🎤";
 
         } catch (err) {
           console.log("マイク起動エラー:", err);
-          alert("マイクがうまく起動できませんでした。もう一度押してね！");
         }
 
       } else {
-        // 録音ストップ
         isRecording = false;
         speakBtn.textContent = "🎤";
         speakBtn.classList.remove("recording");
@@ -604,10 +599,10 @@
       player.currentTime = 0;
       player.play().catch(e => {
         console.log("再生エラー:", e);
-        alert("音声を再生できませんでした。もう一度吹き込んでみてね！");
       });
     }
 
+    /* ★ 色が戻った時の演出 ★ */
     function handleSuccess() {
       const stage = currentStages[currentStage];
       playSuccessSound();
@@ -616,8 +611,10 @@
       targetIcon.className = "target-image colored";
       document.getElementById("main-card").style.backgroundColor = stage.bg;
       
-      showFeedback("Good job! ✨", "success");
-      speakText("Good job!");
+      // 動的に色が戻った演出フレーズを作る（例: Red is back! Can you say it?）
+      const backMsg = `${stage.color} is back! Can you say it?`;
+      document.getElementById("instruction").textContent = backMsg;
+      speakText(`${stage.color} is back!`);
 
       document.getElementById(`seg-${currentStage}`).classList.add("active");
       document.getElementById("next-btn").style.display = "inline-flex";
@@ -648,7 +645,7 @@
           if (st.color === currentCorrectStage.color) {
             handleSuccess();
           } else {
-            showFeedback("Try again! 🔍", "try-again");
+            document.getElementById("instruction").textContent = "Try again! 🔍";
             speakText("Try again!");
           }
         };
