@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Help us Bring the Colors Back! (Ver.2 Board)</title>
+  <title>Help us Bring the Colors Back! (Ver.2 Board Fix)</title>
   <script src="auth.js"></script>
   <style>
     :root {
@@ -370,7 +370,7 @@
     let mediaRecorder = null;
     let audioChunks = [];
     let recordedAudioUrl = null;
-    let persistentAudioStream = null;
+    let activeStream = null;
     let isRecording = false;
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -471,14 +471,6 @@
       currentStages = shuffleArray(masterStages);
       currentStage = 0;
 
-      try {
-        if (!persistentAudioStream) {
-          persistentAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        }
-      } catch (err) {
-        console.log("マイク許可エラー:", err);
-      }
-
       const overlay = document.getElementById("intro-overlay");
       overlay.style.transition = "opacity 0.6s ease";
       overlay.style.opacity = "0";
@@ -531,8 +523,8 @@
       speakText(stage.text);
     }
 
-    /* ★ 電子黒板用：純粋なマイク録音・自動再生処理 ★ */
-    function toggleRecording() {
+    /* ★ RICOH電子黒板特化型：マイク録音・トラック強制解放処理 ★ */
+    async function toggleRecording() {
       initAudioContext();
       if (window.speechSynthesis) window.speechSynthesis.cancel();
 
@@ -540,45 +532,63 @@
 
       if (!isRecording) {
         // 録音スタート
-        isRecording = true;
-        speakBtn.textContent = "👂";
-        speakBtn.classList.add("recording");
-        showFeedback("きいているよ... 🎤", "success");
-
-        audioChunks = [];
         try {
-          let mimeType = '';
-          if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
-          else if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+          // 電子黒板用に毎回フレッシュなストリームを取得
+          activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioChunks = [];
 
-          const options = mimeType ? { mimeType } : {};
-          mediaRecorder = new MediaRecorder(persistentAudioStream, options);
+          // RICOH用フォーマット選定
+          let options = {};
+          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            options = { mimeType: 'audio/webm;codecs=opus' };
+          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            options = { mimeType: 'audio/mp4' };
+          }
+
+          mediaRecorder = new MediaRecorder(activeStream, options);
           
           mediaRecorder.ondataavailable = e => {
             if (e.data.size > 0) audioChunks.push(e.data);
           };
 
           mediaRecorder.onstop = () => {
-            const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
+            // 1. 録音データをBlob化
+            const mimeType = mediaRecorder ? mediaRecorder.mimeType : 'audio/wav';
+            const blob = new Blob(audioChunks, { type: mimeType });
+            
+            if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
             recordedAudioUrl = URL.createObjectURL(blob);
+            
             const player = document.getElementById("user-audio-player");
             player.src = recordedAudioUrl;
 
-            // 録音完了後、即自動再生！
+            // 2. 電子黒板のスピーカーを解放するため、マイクの物理トラックを完全に停止する！
+            if (activeStream) {
+              activeStream.getTracks().forEach(track => track.stop());
+              activeStream = null;
+            }
+
+            // 3. 再生ボタンを表示
             document.getElementById("play-btn").style.display = "inline-flex";
-            playRecordedAudio();
+            showFeedback("▶️ ボタンでおとをきこう！", "success");
           };
 
           mediaRecorder.start(100);
+          isRecording = true;
+          speakBtn.textContent = "👂";
+          speakBtn.classList.add("recording");
+          showFeedback("きいているよ... 🎤", "success");
+
         } catch (err) {
-          console.log("録音開始エラー:", err);
+          console.log("マイク起動エラー:", err);
+          alert("マイクがうまく起動できませんでした。もう一度押してね！");
         }
+
       } else {
         // 録音ストップ
         isRecording = false;
         speakBtn.textContent = "🎤";
         speakBtn.classList.remove("recording");
-        showFeedback("きいてみよう！ 🎵", "success");
 
         if (mediaRecorder && mediaRecorder.state === "recording") {
           mediaRecorder.stop();
@@ -594,6 +604,7 @@
       player.currentTime = 0;
       player.play().catch(e => {
         console.log("再生エラー:", e);
+        alert("音声を再生できませんでした。もう一度吹き込んでみてね！");
       });
     }
 
