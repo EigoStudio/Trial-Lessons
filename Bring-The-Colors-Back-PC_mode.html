@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Help us Bring the Colors Back! (Ver.1)</title>
+  <title>Help us Bring the Colors Back! (Ver.1 PC/Mobile)</title>
   <script src="auth.js"></script>
   <style>
     :root {
@@ -78,10 +78,10 @@
       transition: background-color 0.5s ease;
     }
     .instruction {
-      font-size: 0.95rem;
+      font-size: 1.1rem;
       color: #7f8c8d;
       margin-bottom: 4px;
-      font-weight: bold;
+      font-weight: 800;
     }
     
     .target-image {
@@ -103,10 +103,10 @@
     }
 
     .target-text {
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       font-weight: 900;
       color: #2c3e50;
-      margin: 2px 0 8px 0;
+      margin: 4px 0 10px 0;
     }
 
     .btn-group {
@@ -226,29 +226,23 @@
     }
     .modal-card {
       background: white;
-      border-radius: 24px;
-      padding: 24px;
+      border-radius: 28px;
+      padding: 28px 20px 24px 20px;
       text-align: center;
-      max-width: 340px;
-      width: 100%;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      max-width: 320px;
+      width: 85%;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
       animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     @keyframes popIn {
       0% { transform: scale(0.7); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
-    .modal-title {
+    .modal-target-phrase {
       font-size: 1.6rem;
-      color: #2ecc71;
       font-weight: 900;
-      margin-bottom: 8px;
-    }
-    .modal-subtitle {
-      font-size: 1rem;
-      color: #7f8c8d;
+      color: #2c3e50;
       margin-bottom: 20px;
-      font-weight: bold;
     }
     .modal-btn-group {
       display: flex;
@@ -355,7 +349,7 @@
   </div>
 
   <div class="card" id="main-card">
-    <div class="instruction" id="instruction">🔊 ボタンをおして おとをきこう！</div>
+    <div class="instruction" id="instruction">Listen & Tap! 🔊</div>
     
     <div class="target-image gray" id="target-icon">🌹</div>
     <div class="target-text" id="target-text">a red flower</div>
@@ -372,11 +366,10 @@
 
   <div class="color-grid" id="color-grid"></div>
 
-  <!-- 正解時に自分の声をすぐ再生できるポップアップ -->
+  <!-- 正解時に自分の声を再生できるシンプルモーダル -->
   <div class="modal-overlay" id="voice-modal">
     <div class="modal-card">
-      <div class="modal-title">Good job! ✨</div>
-      <div class="modal-subtitle">いまの こえを きいてみよう！</div>
+      <div class="modal-target-phrase" id="modal-target-phrase">a red flower</div>
       <div class="modal-btn-group">
         <button class="btn-icon btn-listen" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); width:64px; height:64px; font-size:2.2rem;" onclick="playRecordedAudio()">▶️</button>
         <button class="btn-icon btn-listen" style="background: linear-gradient(135deg, #2ecc71, #27ae60); width:64px; height:64px; font-size:2.2rem;" onclick="closeModalAndNext()">➔</button>
@@ -550,7 +543,7 @@
       targetIcon.className = "target-image gray";
       
       document.getElementById("target-text").textContent = stage.text;
-      document.getElementById("instruction").textContent = "🔊 ボタンをおして おとをきこう！";
+      document.getElementById("instruction").textContent = "Listen & Tap! 🔊";
       document.getElementById("feedback").textContent = "";
       document.getElementById("feedback").className = "feedback";
       document.getElementById("main-card").style.backgroundColor = "#ffffff";
@@ -563,7 +556,7 @@
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     }
 
-    function speakText(text) {
+    function speakText(text, onEndedCallback) {
       initAudioContext();
       if (window.speechSynthesis) window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
@@ -571,6 +564,7 @@
       utterance.lang = "en-US";
       utterance.rate = 0.65;
       utterance.pitch = 1.15;
+      if (onEndedCallback) utterance.onend = onEndedCallback;
       window.speechSynthesis.speak(utterance);
     }
 
@@ -579,7 +573,6 @@
       speakText(stage.text);
     }
 
-    /* ★ 音声認識と録音を同時にスタート ★ */
     function startListening() {
       initAudioContext();
       
@@ -606,8 +599,8 @@
         const btn = document.getElementById("speak-btn");
         btn.classList.add("listening");
         btn.textContent = "👂";
+        document.getElementById("instruction").textContent = "Recording... 🎤";
         
-        // 認識開始と同時に声の録音もスタート
         startRecordingAudio();
       };
 
@@ -615,7 +608,6 @@
         if (event.results && event.results[0] && event.results[0][0]) {
           const spokenText = event.results[0][0].transcript.toLowerCase();
           
-          // 録音を停止してから正否チェック
           stopRecordingAudio(() => {
             checkAnswer(spokenText, true);
           });
@@ -625,7 +617,7 @@
       recognition.onerror = (event) => {
         stopAllMicProcess();
         if (event.error === 'no-speech') {
-          showFeedback("もう一度 喋ってみてね！ 🎤", "try-again");
+          showFeedback("Try again! 🎤", "try-again");
         } else if (event.error !== 'aborted' && event.error !== 'audio-capture' && event.error !== 'not-allowed') {
           showFeedback("Try again! 🎵", "try-again");
           speakText("Try again!");
@@ -694,10 +686,7 @@
     function playRecordedAudio() {
       initAudioContext();
       const player = document.getElementById("user-audio-player");
-      if (!player.src || player.src === "") {
-        alert("声がうまく録音できませんでした。もう一度喋ってみてね！");
-        return;
-      }
+      if (!player.src || player.src === "") return;
 
       player.currentTime = 0;
       player.play().catch(e => {
@@ -715,17 +704,15 @@
       targetIcon.className = "target-image colored";
       document.getElementById("main-card").style.backgroundColor = stage.bg;
       
-      showFeedback("Good job! ✨", "success");
-      speakText("Good job!");
-
       document.getElementById(`seg-${currentStage}`).classList.add("active");
-      document.getElementById("instruction").textContent = "🎤 はなしてみよう！";
+      document.getElementById("instruction").textContent = "Say it! 🎤";
       
       if (isVoice) {
-        // 声で正解したらポップアップを出して、すぐ声を聴けるようにする
+        // 声で正解した場合、モーダルポップアップを表示
+        document.getElementById("modal-target-phrase").textContent = stage.text;
         setTimeout(() => {
           document.getElementById("voice-modal").style.display = "flex";
-        }, 800);
+        }, 600);
       } else {
         document.getElementById("next-btn").style.display = "inline-flex";
       }
@@ -733,7 +720,24 @@
 
     function closeModalAndNext() {
       document.getElementById("voice-modal").style.display = "none";
-      nextStage();
+      
+      const stage = currentStages[currentStage];
+      const isLastStage = (currentStage === currentStages.length - 1);
+
+      // モーダルを閉じる時にお祝いボイスを再生
+      const storyVoice = isLastStage 
+        ? `Good job! ${stage.color} is back!` 
+        : `Good job! ${stage.color} is back! Now, let's bring back another color!`;
+
+      document.getElementById("instruction").textContent = `${stage.color} is back! ✨`;
+      
+      speakText(storyVoice, () => {
+        if (isLastStage) {
+          showCelebration();
+        } else {
+          nextStage();
+        }
+      });
     }
 
     function checkAnswer(input, isVoice = false) {
