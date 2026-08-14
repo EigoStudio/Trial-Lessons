@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Help us Bring the Colors Back! (Ver.2 Native Audio)</title>
+  <title>Help us Bring the Colors Back! (Ver.2 Board Persistent Mic)</title>
   <script src="auth.js"></script>
   <style>
     :root {
@@ -137,35 +137,17 @@
     .btn-listen {
       background: linear-gradient(135deg, #3498db, #2980b9);
     }
-    
-    /* 録音用HTML5インプットのスタイル調整 */
-    .rec-input-label {
-      width: 56px;
-      height: 56px;
-      font-size: 1.8rem;
-      border-radius: 50%;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    .btn-speak {
       background: linear-gradient(135deg, #e74c3c, #c0392b);
-      color: white;
     }
-
-    .audio-preview-container {
-      margin-top: 8px;
+    .btn-speak.recording {
+      animation: pulse 1s infinite;
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+    }
+    .btn-play {
+      background: linear-gradient(135deg, #9b59b6, #8e44ad);
       display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
     }
-    audio {
-      width: 100%;
-      max-width: 300px;
-      height: 40px;
-    }
-
     .btn-next {
       border: none;
       background: linear-gradient(135deg, #2ecc71, #27ae60);
@@ -195,6 +177,11 @@
     @keyframes bounce-btn {
       0% { transform: scale(1); }
       100% { transform: scale(1.1); }
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
     }
 
     .feedback {
@@ -334,15 +321,8 @@
     
     <div class="btn-group">
       <button class="btn-icon btn-listen" onclick="playAudio()" aria-label="Listen">🔊</button>
-      
-      <!-- ネイティブ録音UI用の呼び出しボタン -->
-      <label class="rec-input-label" for="native-audio-input">🎤</label>
-      <input type="file" id="native-audio-input" accept="audio/*" capture="microphone" style="display:none;" onchange="handleAudioRecorded(event)">
-    </div>
-
-    <!-- 録音された音声のプレイヤー表示エリア -->
-    <div class="audio-preview-container" id="audio-preview-container">
-      <audio id="native-audio-player" controls></audio>
+      <button class="btn-icon btn-speak" id="speak-btn" onclick="toggleRecording()" aria-label="Speak">🎤</button>
+      <button class="btn-icon btn-play" id="play-btn" onclick="playRecordedAudio()" aria-label="Play">▶️</button>
     </div>
 
     <div class="feedback" id="feedback"></div>
@@ -372,6 +352,8 @@
     <button class="btn-start" style="padding: 14px 28px;" onclick="resetGame()">🔄 もういっかい</button>
   </div>
 
+  <audio id="user-audio-player" style="display:none;"></audio>
+
   <script>
     const masterStages = [
       { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹" },
@@ -385,6 +367,13 @@
 
     let currentStages = [];
     let currentStage = 0;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordedAudioUrl = null;
+    
+    /* ★ 重要: マイクの接続（ストリーム）をゲーム全体で1つだけ保持し続ける ★ */
+    let persistentStream = null;
+    let isRecording = false;
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -479,10 +468,20 @@
       });
     }
 
+    /* ★ ゲームスタート時にマイクを一度だけ繋ぐ ★ */
     async function startGame() {
       playStartSound();
       currentStages = shuffleArray(masterStages);
       currentStage = 0;
+
+      // 最初の1回だけマイク接続をオープンする
+      try {
+        if (!persistentStream) {
+          persistentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+      } catch (err) {
+        console.log("マイク初期設定許可待ち/エラー:", err);
+      }
 
       const overlay = document.getElementById("intro-overlay");
       overlay.style.transition = "opacity 0.6s ease";
@@ -508,8 +507,12 @@
       document.getElementById("main-card").style.backgroundColor = "#ffffff";
       
       document.getElementById("next-btn").style.display = "none";
-      document.getElementById("audio-preview-container").style.display = "none";
-      document.getElementById("native-audio-input").value = "";
+      document.getElementById("play-btn").style.display = "none";
+      
+      const speakBtn = document.getElementById("speak-btn");
+      speakBtn.textContent = "🎤";
+      speakBtn.classList.remove("recording");
+      isRecording = false;
 
       renderColorOnlyTiles();
 
@@ -533,21 +536,83 @@
       speakText(stage.text);
     }
 
-    /* ★ ネイティブ録音完了時のイベント処理 ★ */
-    function handleAudioRecorded(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    /* ★ 連続マイク録音（切断せず使い回す） ★ */
+    async function toggleRecording() {
+      initAudioContext();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
 
-      const audioPlayer = document.getElementById("native-audio-player");
-      const previewContainer = document.getElementById("audio-preview-container");
+      const speakBtn = document.getElementById("speak-btn");
+
+      if (!isRecording) {
+        try {
+          // もしマイクがまだ取れていなければ取得
+          if (!persistentStream) {
+            persistentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          }
+          audioChunks = [];
+
+          let options = {};
+          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            options = { mimeType: 'audio/webm;codecs=opus' };
+          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            options = { mimeType: 'audio/mp4' };
+          }
+
+          // 常時オープンしている persistentStream をそのまま使い回す！
+          mediaRecorder = new MediaRecorder(persistentStream, options);
+          
+          mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            const mimeType = mediaRecorder ? mediaRecorder.mimeType : 'audio/wav';
+            const blob = new Blob(audioChunks, { type: mimeType });
+            
+            if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+            recordedAudioUrl = URL.createObjectURL(blob);
+            
+            const player = document.getElementById("user-audio-player");
+            player.src = recordedAudioUrl;
+
+            // ★ 注目: ここで persistentStream のトラックをストップ（切断）しない！
+            // 繋ぎっぱなしにすることでRICOHブラウザの拒否を回避！
+
+            document.getElementById("play-btn").style.display = "inline-flex";
+            document.getElementById("instruction").textContent = "Listen to your voice! 🎵";
+          };
+
+          mediaRecorder.start(100);
+          isRecording = true;
+          speakBtn.textContent = "👂";
+          speakBtn.classList.add("recording");
+          document.getElementById("instruction").textContent = "Recording... 🎤";
+
+        } catch (err) {
+          console.log("録音起動エラー:", err);
+          alert("マイクがうまく開始できませんでした。もう一度お試しください。");
+        }
+
+      } else {
+        isRecording = false;
+        speakBtn.textContent = "🎤";
+        speakBtn.classList.remove("recording");
+
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.stop();
+        }
+      }
+    }
+
+    function playRecordedAudio() {
+      initAudioContext();
+      const player = document.getElementById("user-audio-player");
+      if (!player.src || player.src === "") return;
+
       const stage = currentStages[currentStage];
-
-      audioPlayer.src = URL.createObjectURL(file);
-      previewContainer.style.display = "flex";
-      document.getElementById("instruction").textContent = "Listen to your voice! 🎵";
-
-      // 自分の声を再生し終わった時にお祝いボイスを再生
-      audioPlayer.onended = () => {
+      player.currentTime = 0;
+      
+      player.onended = () => {
         const storyVoice = `Good job! ${stage.color} is back! Now, let's save another color!`;
         document.getElementById("instruction").textContent = `${stage.color} is back! ✨`;
         
@@ -555,6 +620,10 @@
           document.getElementById("next-btn").style.display = "inline-flex";
         });
       };
+
+      player.play().catch(e => {
+        console.log("再生エラー:", e);
+      });
     }
 
     function handleSuccess() {
