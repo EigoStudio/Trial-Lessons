@@ -323,7 +323,6 @@
     <div class="btn-group">
       <button class="btn-icon btn-listen" onclick="playAudio()" aria-label="Listen">🔊</button>
       <button class="btn-icon btn-speak" id="speak-btn" onclick="startListening()" aria-label="Speak">🎤</button>
-      <!-- ★耳（👂）から再生（▶️）に変更 ★ -->
       <button class="btn-icon btn-record" id="play-user-btn" onclick="playRecordedAudio()" aria-label="Play recorded voice">▶️</button>
     </div>
 
@@ -354,7 +353,6 @@
     <button class="btn-start" style="padding: 14px 28px;" onclick="resetGame()">🔄 もういっかい</button>
   </div>
 
-  <!-- 電子黒板用の確実に鳴る音声再生要素 -->
   <audio id="user-audio-player" style="display:none;"></audio>
 
   <script>
@@ -525,8 +523,7 @@
       recordedAudioUrl = null;
 
       renderColorOnlyTiles();
-      
-      // ★電子黒板のエラー防止：自動再生をオフにし、スピーカーボタンを促す★
+
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     }
 
@@ -546,10 +543,10 @@
       speakText(stage.text);
     }
 
+    /* ★ 再度マイクを押した時に前回の「Try again」状態をリセットしてスタート ★ */
     function startListening() {
       initAudioContext();
       
-      // 読み上げ音声を即停止してマイクをクリアに開く
       if (window.speechSynthesis) window.speechSynthesis.cancel();
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -558,8 +555,14 @@
         return;
       }
 
+      // 既存の認識インスタンスがあれば確実に完全リセット
       if (recognition) {
+        recognition.onstart = null;
+        recognition.onend = null;
+        recognition.onresult = null;
+        recognition.onerror = null;
         try { recognition.abort(); } catch(e){}
+        recognition = null;
       }
 
       recognition = new SpeechRecognition();
@@ -580,8 +583,10 @@
       };
 
       recognition.onresult = (event) => {
-        const spokenText = event.results[0][0].transcript.toLowerCase();
-        checkAnswer(spokenText);
+        if (event.results && event.results[0] && event.results[0][0]) {
+          const spokenText = event.results[0][0].transcript.toLowerCase();
+          checkAnswer(spokenText);
+        }
       };
 
       recognition.onerror = (event) => {
@@ -605,6 +610,9 @@
 
     function startVoiceRecording() {
       try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.stop();
+        }
         audioChunks = [];
         if (persistentAudioStream) {
           initRecorderInstance();
@@ -620,7 +628,6 @@
     }
 
     function initRecorderInstance() {
-      // RICOH等の電子黒板ブラウザに対応するフォーマット順
       let mimeType = '';
       if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
       else if (MediaRecorder.isTypeSupported('audio/aac')) mimeType = 'audio/aac';
@@ -638,7 +645,6 @@
         const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
         recordedAudioUrl = URL.createObjectURL(blob);
         
-        // 音声プレイヤーにセット
         const player = document.getElementById("user-audio-player");
         player.src = recordedAudioUrl;
 
@@ -654,7 +660,6 @@
       }
     }
 
-    /* ★電子黒板用：確実に自分の声をスピーカー再生する処理 ★ */
     function playRecordedAudio() {
       initAudioContext();
       const player = document.getElementById("user-audio-player");
@@ -663,13 +668,13 @@
         return;
       }
 
-      // 音声を最初から再生
       player.currentTime = 0;
       player.play().catch(e => {
         console.log("再生エラー:", e);
       });
     }
 
+    /* ★ 画面表示と褒め声を確実に Good job! に上書き切り替え ★ */
     function handleSuccess() {
       const stage = currentStages[currentStage];
       playSuccessSound();
@@ -678,6 +683,7 @@
       targetIcon.className = "target-image colored";
       document.getElementById("main-card").style.backgroundColor = stage.bg;
       
+      // Try again を上書きして Good job! を表示＆自動発声
       showFeedback("Good job! ✨", "success");
       speakText("Good job!");
 
