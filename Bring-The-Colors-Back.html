@@ -212,6 +212,51 @@
       transform: scale(0.88);
     }
 
+    /* ポップアップ（モーダル）スタイル */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      padding: 20px;
+    }
+    .modal-card {
+      background: white;
+      border-radius: 24px;
+      padding: 24px;
+      text-align: center;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.7); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .modal-title {
+      font-size: 1.6rem;
+      color: #2ecc71;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+    .modal-subtitle {
+      font-size: 1rem;
+      color: #7f8c8d;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .modal-btn-group {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      align-items: center;
+    }
+
     .intro-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -327,6 +372,18 @@
 
   <div class="color-grid" id="color-grid"></div>
 
+  <!-- 自分の声を聴くポップアップ画面 -->
+  <div class="modal-overlay" id="voice-modal">
+    <div class="modal-card">
+      <div class="modal-title">Good job! ✨</div>
+      <div class="modal-subtitle">じぶんのこえを きいてみよう！</div>
+      <div class="modal-btn-group">
+        <button class="btn-icon btn-listen" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); width:64px; height:64px; font-size:2.2rem;" onclick="playRecordedAudio()">▶️</button>
+        <button class="btn-icon btn-listen" style="background: linear-gradient(135deg, #2ecc71, #27ae60); width:64px; height:64px; font-size:2.2rem;" onclick="closeModalAndNext()">➔</button>
+      </div>
+    </div>
+  </div>
+
   <div class="intro-overlay" id="intro-overlay">
     <div class="intro-character">🥺🌈</div>
     <div class="intro-title">たいへん！</div>
@@ -347,6 +404,8 @@
     <button class="btn-start" style="padding: 14px 28px;" onclick="resetGame()">🔄 もういっかい</button>
   </div>
 
+  <audio id="user-audio-player" style="display:none;"></audio>
+
   <script>
     const masterStages = [
       { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹", colorKeys: ["red", "レッド", "れっど"], nounKeys: ["flower", "フラワー", "ふらわー"] },
@@ -360,6 +419,10 @@
 
     let currentStages = [];
     let currentStage = 0;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordedAudioUrl = null;
+    let persistentAudioStream = null;
     let recognition = null;
     let isListening = false;
 
@@ -461,6 +524,14 @@
       currentStages = shuffleArray(masterStages);
       currentStage = 0;
 
+      try {
+        if (!persistentAudioStream) {
+          persistentAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+      } catch (err) {
+        console.log("マイク許可エラー:", err);
+      }
+
       const overlay = document.getElementById("intro-overlay");
       overlay.style.transition = "opacity 0.6s ease";
       overlay.style.opacity = "0";
@@ -485,6 +556,7 @@
       document.getElementById("main-card").style.backgroundColor = "#ffffff";
       
       document.getElementById("next-btn").style.display = "none";
+      document.getElementById("voice-modal").style.display = "none";
 
       renderColorOnlyTiles();
 
@@ -533,6 +605,7 @@
         const btn = document.getElementById("speak-btn");
         btn.classList.add("listening");
         btn.textContent = "👂";
+        startVoiceRecording();
       };
 
       recognition.onend = () => {
@@ -540,6 +613,7 @@
         const btn = document.getElementById("speak-btn");
         btn.classList.remove("listening");
         btn.textContent = "🎤";
+        stopVoiceRecording();
       };
 
       recognition.onresult = (event) => {
@@ -549,15 +623,13 @@
         }
       };
 
-      /* ★ エラー音（ブブッ）は発声させず、メッセージとボイスのみで案内 ★ */
       recognition.onerror = (event) => {
         isListening = false;
         const btn = document.getElementById("speak-btn");
         btn.classList.remove("listening");
         btn.textContent = "🎤";
+        stopVoiceRecording();
 
-        console.log("SpeechRecognition Error:", event.error);
-        
         if (event.error === 'no-speech') {
           showFeedback("もう一度 喋ってみてね！ 🎤", "try-again");
         } else if (event.error !== 'aborted' && event.error !== 'audio-capture' && event.error !== 'not-allowed') {
@@ -573,7 +645,78 @@
       }
     }
 
+    function startVoiceRecording() {
+      try {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.stop();
+        }
+        audioChunks = [];
+        if (persistentAudioStream) {
+          initRecorderInstance();
+        } else {
+          navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            persistentAudioStream = stream;
+            initRecorderInstance();
+          }).catch(err => console.log("マイクストリーム取得エラー:", err));
+        }
+      } catch (err) {
+        console.log("マイク録音エラー:", err);
+      }
+    }
+
+    function initRecorderInstance() {
+      let mimeType = '';
+      if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+      else if (MediaRecorder.isTypeSupported('audio/aac')) mimeType = 'audio/aac';
+      else if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+
+      const options = mimeType ? { mimeType } : {};
+
+      mediaRecorder = new MediaRecorder(persistentAudioStream, options);
+      
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
+        recordedAudioUrl = URL.createObjectURL(blob);
+        const player = document.getElementById("user-audio-player");
+        player.src = recordedAudioUrl;
+      };
+
+      mediaRecorder.start(100);
+    }
+
+    function stopVoiceRecording() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+      }
+    }
+
+    function playRecordedAudio() {
+      initAudioContext();
+      const player = document.getElementById("user-audio-player");
+      if (!player.src || player.src === "") {
+        alert("声がうまく録音できませんでした。もう一度喋ってみてね！");
+        return;
+      }
+
+      player.currentTime = 0;
+      player.play().catch(e => {
+        console.log("再生エラー:", e);
+      });
+    }
+
+    /* ★ 正解時にマイクを完全遮断してポップアップ画面を安全に開く ★ */
     function handleSuccess() {
+      // 1. マイクと音声認識を完全停止
+      if (recognition) {
+        try { recognition.abort(); } catch(e){}
+      }
+      stopVoiceRecording();
+
+      // 2. 音効と演出
       const stage = currentStages[currentStage];
       playSuccessSound();
       
@@ -586,7 +729,16 @@
 
       document.getElementById(`seg-${currentStage}`).classList.add("active");
       document.getElementById("instruction").textContent = "🎤 はなしてみよう！";
-      document.getElementById("next-btn").style.display = "inline-flex";
+      
+      // 3. マイク停止後に安全にポップアップ表示
+      setTimeout(() => {
+        document.getElementById("voice-modal").style.display = "flex";
+      }, 800);
+    }
+
+    function closeModalAndNext() {
+      document.getElementById("voice-modal").style.display = "none";
+      nextStage();
     }
 
     function checkAnswer(input) {
