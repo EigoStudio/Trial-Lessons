@@ -212,6 +212,7 @@
       transform: scale(0.88);
     }
 
+    /* ポップアップ（モーダル）スタイル */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -241,17 +242,17 @@
       font-size: 1.6rem;
       color: #2ecc71;
       font-weight: 900;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .modal-subtitle {
       font-size: 1rem;
       color: #7f8c8d;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       font-weight: bold;
     }
     .modal-btn-group {
       display: flex;
-      gap: 16px;
+      gap: 12px;
       justify-content: center;
       align-items: center;
     }
@@ -371,13 +372,18 @@
 
   <div class="color-grid" id="color-grid"></div>
 
+  <!-- ★ 完全独立した録音＆再生ポップアップ画面 ★ -->
   <div class="modal-overlay" id="voice-modal">
     <div class="modal-card">
       <div class="modal-title">Good job! ✨</div>
-      <div class="modal-subtitle">じぶんのこえを きいてみよう！</div>
+      <div class="modal-subtitle" id="modal-sub">ボタンをおして こえをのこそう！</div>
       <div class="modal-btn-group">
-        <button class="btn-icon btn-listen" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); width:64px; height:64px; font-size:2.2rem;" onclick="playRecordedAudio()">▶️</button>
-        <button class="btn-icon btn-listen" style="background: linear-gradient(135deg, #2ecc71, #27ae60); width:64px; height:64px; font-size:2.2rem;" onclick="closeModalAndNext()">➔</button>
+        <!-- 録音ボタン -->
+        <button class="btn-icon" id="modal-rec-btn" style="background: linear-gradient(135deg, #e74c3c, #c0392b); width:60px; height:60px; font-size:2rem;" onclick="toggleModalRecord()">🔴</button>
+        <!-- 再生ボタン（録音後に出現） -->
+        <button class="btn-icon" id="modal-play-btn" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); width:60px; height:60px; font-size:2rem; display:none;" onclick="playRecordedAudio()">▶️</button>
+        <!-- 次へ進むボタン -->
+        <button class="btn-icon" style="background: linear-gradient(135deg, #2ecc71, #27ae60); width:60px; height:60px; font-size:2rem;" onclick="closeModalAndNext()">➔</button>
       </div>
     </div>
   </div>
@@ -423,6 +429,7 @@
     let persistentAudioStream = null;
     let recognition = null;
     let isListening = false;
+    let isModalRecording = false;
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -522,7 +529,6 @@
       currentStages = shuffleArray(masterStages);
       currentStage = 0;
 
-      // スタート時に一度確定でマイクパーミッションを掴む
       try {
         if (!persistentAudioStream) {
           persistentAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -578,7 +584,7 @@
       speakText(stage.text);
     }
 
-    /* ★ 電子黒板用：マイク起動をワンタップで確実に実行する強制リカバリー処理 ★ */
+    /* ★ 音声認識単体制御（録音処理を一切含めずマイク競合を排除） ★ */
     function startListening() {
       initAudioContext();
       
@@ -595,19 +601,6 @@
         return;
       }
 
-      // マイクストリームの生存確認と再獲得
-      if (!persistentAudioStream) {
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-          persistentAudioStream = stream;
-          executeRecognition();
-        }).catch(() => executeRecognition());
-      } else {
-        executeRecognition();
-      }
-    }
-
-    function executeRecognition() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognition = new SpeechRecognition();
       recognition.lang = 'en-US';
       recognition.interimResults = false;
@@ -618,7 +611,6 @@
         const btn = document.getElementById("speak-btn");
         btn.classList.add("listening");
         btn.textContent = "👂";
-        startVoiceRecording();
       };
 
       recognition.onend = () => {
@@ -626,7 +618,6 @@
         const btn = document.getElementById("speak-btn");
         btn.classList.remove("listening");
         btn.textContent = "🎤";
-        stopVoiceRecording();
       };
 
       recognition.onresult = (event) => {
@@ -641,7 +632,6 @@
         const btn = document.getElementById("speak-btn");
         btn.classList.remove("listening");
         btn.textContent = "🎤";
-        stopVoiceRecording();
 
         if (event.error === 'no-speech') {
           showFeedback("もう一度 喋ってみてね！ 🎤", "try-again");
@@ -654,22 +644,24 @@
       try {
         recognition.start();
       } catch (e) {
-        // 電子黒板の起動漏れ発生時にコンマ数秒で自動再試行（2度押しを解消）
-        setTimeout(() => {
-          try { recognition.start(); } catch(err){}
-        }, 200);
+        console.log("音声認識スタート例外:", e);
       }
     }
 
-    function startVoiceRecording() {
-      try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-          mediaRecorder.stop();
-        }
-        audioChunks = [];
-        
-        if (!persistentAudioStream) return;
+    /* ★ モーダル（ポップアップ）内専用の録音処理 ★ */
+    function toggleModalRecord() {
+      initAudioContext();
+      const recBtn = document.getElementById("modal-rec-btn");
+      const modalSub = document.getElementById("modal-sub");
 
+      if (!isModalRecording) {
+        // 録音開始
+        isModalRecording = true;
+        recBtn.textContent = "⏹️";
+        recBtn.style.background = "linear-gradient(135deg, #2ecc71, #27ae60)";
+        modalSub.textContent = "きいているよ... もういちど押してね！";
+
+        audioChunks = [];
         let mimeType = '';
         if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
         else if (MediaRecorder.isTypeSupported('audio/aac')) mimeType = 'audio/aac';
@@ -687,17 +679,20 @@
           recordedAudioUrl = URL.createObjectURL(blob);
           const player = document.getElementById("user-audio-player");
           player.src = recordedAudioUrl;
+          document.getElementById("modal-play-btn").style.display = "inline-flex";
         };
 
         mediaRecorder.start(100);
-      } catch (err) {
-        console.log("マイク録音エラー:", err);
-      }
-    }
+      } else {
+        // 録音停止
+        isModalRecording = false;
+        recBtn.textContent = "🔴";
+        recBtn.style.background = "linear-gradient(135deg, #e74c3c, #c0392b)";
+        modalSub.textContent = "▶️ で じぶんのこえをきこう！";
 
-    function stopVoiceRecording() {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.stop();
+        }
       }
     }
 
@@ -719,7 +714,6 @@
       if (recognition) {
         try { recognition.abort(); } catch(e){}
       }
-      stopVoiceRecording();
 
       const stage = currentStages[currentStage];
       playSuccessSound();
@@ -735,6 +729,13 @@
       document.getElementById("instruction").textContent = "🎤 はなしてみよう！";
       
       if (isVoice) {
+        // モーダルの状態を初期化して開く
+        document.getElementById("modal-rec-btn").textContent = "🔴";
+        document.getElementById("modal-rec-btn").style.background = "linear-gradient(135deg, #e74c3c, #c0392b)";
+        document.getElementById("modal-play-btn").style.display = "none";
+        document.getElementById("modal-sub").textContent = "🔴 をおして こえをのこそう！";
+        isModalRecording = false;
+
         setTimeout(() => {
           document.getElementById("voice-modal").style.display = "flex";
         }, 800);
@@ -744,6 +745,9 @@
     }
 
     function closeModalAndNext() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+      }
       document.getElementById("voice-modal").style.display = "none";
       nextStage();
     }
