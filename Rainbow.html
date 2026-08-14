@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainbow! - Fun English Activity</title>
+    <script src="auth.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #4a90e2;
+            --accent-pink: #ff78ae;
+            --bg-color: #fffde7;
+            --text-color: #2c3e50;
+        }
+
+        body {
+            font-family: 'Comic Neue', cursive, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        #game-container {
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.15);
+            padding: 30px;
+            width: 100%;
+            max-width: 700px;
+            text-align: center;
+            border: 6px dashed #ffd54f;
+            position: relative;
+            min-height: 480px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        h1 {
+            color: #e67e22;
+            font-size: 2.5rem;
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: var(--text-color);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .instruction {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 0 0 20px 0;
+        }
+
+        .page {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+        }
+
+        .page.active {
+            display: flex;
+        }
+
+        /* スピーカーボタン */
+        .speaker-btn {
+            background: var(--accent-pink);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #d64d8a;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.1s;
+        }
+        .speaker-btn:hover { background: #ff5c9d; }
+        .speaker-btn:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+
+        /* ナビゲーションボタン */
+        .nav-btn {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            font-size: 1.3rem;
+            font-family: inherit;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #2980b9;
+            margin-top: 20px;
+            transition: 0.1s;
+        }
+        .nav-btn:hover { background: #357abd; }
+        .nav-btn:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+
+        /* 1ページ目: クイズ */
+        .quiz-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .quiz-card {
+            background: #fafafa;
+            border: 4px solid #f1f2f6;
+            border-radius: 20px;
+            padding: 25px;
+            font-size: 65px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .quiz-card:hover { transform: scale(1.05); }
+        .quiz-card.correct { border-color: #2ecc71; background-color: #e8f5e9; }
+        .quiz-card.wrong { border-color: #e74c3c; background-color: #ffebee; opacity: 0.6; }
+
+        /* 2ページ目: 単語（Word）をつかんで色ブロック（Color）へドロップ */
+        .drag-section {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        /* つかむ側：単語チップのデザイン */
+        .word-chip {
+            background: #ffffff;
+            border: 3px solid #4a90e2;
+            border-radius: 15px;
+            padding: 10px 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            cursor: grab;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+        }
+        .word-chip:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+
+        /* 入れる側：色のドロップターゲット */
+        .drop-section {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+        .drop-target {
+            border: 3px solid #ffffff;
+            border-radius: 15px;
+            width: 120px;
+            height: 75px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 5px rgba(0,0,0,0.15);
+        }
+
+        /* 3ページ目: お気に入りカラー */
+        .color-block {
+            width: 65px;
+            height: 65px;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 5px rgba(0,0,0,0.15);
+        }
+        .favorite-box {
+            font-size: 1.8rem;
+            margin-top: 25px;
+            min-height: 60px;
+            color: var(--text-color);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        /* 4ページ目: フィナーレ */
+        .rainbow-art {
+            font-size: 120px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            margin: 15px 0;
+        }
+        .final-text-area {
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .final-text {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ff4081;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🌈 Rainbow! 🌈</h1>
+
+    <div id="game-container">
+        
+        <!-- 1ページ目 -->
+        <div id="page1" class="page active">
+            <h2>What's a rainbow? <button class="speaker-btn" onclick="speak('What\'s a rainbow?')">🔊 Listen</button></h2>
+            <div class="quiz-container">
+                <div class="quiz-card" onclick="checkAnswer(this, true)">🌈</div>
+                <div class="quiz-card" onclick="checkAnswer(this, false)">⛄</div>
+                <div class="quiz-card" onclick="checkAnswer(this, false)">⛰️</div>
+                <div class="quiz-card" onclick="checkAnswer(this, false)">☀️</div>
+            </div>
+            <button class="nav-btn" onclick="nextPage(2)" style="visibility: hidden;" id="next1">Next ➔</button>
+        </div>
+
+        <!-- 2ページ目: 単語（Word）をつかむ ➔ 色（Color）にいれる -->
+        <div id="page2" class="page">
+            <h2>Match the word to the color! <button class="speaker-btn" onclick="speak('Match the word to the color!')">🔊 Listen</button></h2>
+            <div class="instruction">Touch or drag the word! Listen to the sound!</div>
+            
+            <!-- 単語チップ（つかむ側） -->
+            <div class="drag-section" id="block-container"></div>
+            
+            <!-- 色のターゲット（入れる側） -->
+            <div class="drop-section">
+                <div class="drop-target" data-color="red" style="background:#ff4d4d; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+                <div class="drop-target" data-color="yellow" style="background:#ffd633; color:#333;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+                <div class="drop-target" data-color="pink" style="background:#ff69b4; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+                <div class="drop-target" data-color="green" style="background:#2ecc71; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+                <div class="drop-target" data-color="orange" style="background:#ff9f43; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+                <div class="drop-target" data-color="purple" style="background:#9b59b6; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+                <div class="drop-target" data-color="blue" style="background:#3498db; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+            </div>
+            
+            <button class="nav-btn" onclick="nextPage(3)" style="visibility: hidden;" id="next2">Next ➔</button>
+        </div>
+
+        <!-- 3ページ目 -->
+        <div id="page3" class="page">
+            <h2>What's your favorite color? <button class="speaker-btn" onclick="speak('What\'s your favorite color?')">🔊 Listen</button></h2>
+            <div class="instruction">Choose your favorite color!</div>
+            <div class="drag-section">
+                <div class="color-block" style="background:red;" onclick="selectFavorite('red')"></div>
+                <div class="color-block" style="background:yellow;" onclick="selectFavorite('yellow')"></div>
+                <div class="color-block" style="background:pink;" onclick="selectFavorite('pink')"></div>
+                <div class="color-block" style="background:green;" onclick="selectFavorite('green')"></div>
+                <div class="color-block" style="background:orange;" onclick="selectFavorite('orange')"></div>
+                <div class="color-block" style="background:purple;" onclick="selectFavorite('purple')"></div>
+                <div class="color-block" style="background:blue;" onclick="selectFavorite('blue')"></div>
+            </div>
+            <div class="favorite-box">
+                <span id="fav-text"></span>
+                <button id="speaker3" class="speaker-btn" onclick="speakFavorite()" style="display:none;">🔊 Listen</button>
+            </div>
+            <button class="nav-btn" onclick="nextPage(4)">Next ➔</button>
+        </div>
+
+        <!-- 4ページ目 -->
+        <div id="page4" class="page">
+            <h2>I like all the rainbow colors! <button class="speaker-btn" onclick="speak('I like all the rainbow colors!')">🔊 Listen</button></h2>
+            <div class="instruction">Tap the rainbow!</div>
+            <div class="rainbow-art" id="final-rainbow" onclick="triggerFinale()">🌈</div>
+            <div class="final-text-area">
+                <div class="final-text" id="final-text">
+                    Red, yellow, pink, green, orange, purple, and blue!
+                </div>
+                <button id="speaker4" class="speaker-btn" onclick="speak('Red, yellow, pink, green, orange, purple, and blue!')" style="display:none;">🔊 Listen</button>
+            </div>
+            <button class="nav-btn" onclick="nextPage(1)" style="background-color: #2ecc71; box-shadow: 0 4px 0 #27ae60;">Play Again 🔄</button>
+        </div>
+
+    </div>
+
+    <script>
+        let preferredVoice = null;
+
+        function loadVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length === 0) return;
+            preferredVoice = 
+                voices.find(v => v.lang === "en-US" && v.name.includes("Google US English")) ||
+                voices.find(v => v.lang === "en-US" && v.name.includes("Samantha")) ||
+                voices.find(v => v.lang.startsWith("en-US") && (v.name.includes("Female") || v.name.includes("Zira"))) ||
+                voices.find(v => v.lang.startsWith("en"));
+        }
+        
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+            loadVoices();
+        }
+
+        function speak(text) {
+            const synth = window.speechSynthesis;
+            if (!synth) return;
+            synth.cancel();
+            
+            const uttr = new SpeechSynthesisUtterance(text);
+            if (preferredVoice) uttr.voice = preferredVoice;
+            uttr.rate = 0.72;  
+            uttr.pitch = 1.15; 
+            synth.speak(uttr);
+        }
+
+        function nextPage(pageNumber) {
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page' + pageNumber).classList.add('active');
+            if(pageNumber === 2) { setupPage2(); }
+            if(pageNumber === 4) { setupPage4(); }
+        }
+
+        function checkAnswer(element, isCorrect) {
+            if(isCorrect) {
+                element.classList.add('correct');
+                document.getElementById('next1').style.visibility = 'visible';
+            } else {
+                element.classList.add('wrong');
+            }
+        }
+
+        const colors = ['red', 'yellow', 'pink', 'green', 'orange', 'purple', 'blue'];
+        let scorePage2 = 0;
+
+        /* 2ページ目のセットアップ：単語をつかんだ瞬間に音声が流れます */
+        function setupPage2() {
+            scorePage2 = 0;
+            document.getElementById('next2').style.visibility = 'hidden';
+            const container = document.getElementById('block-container');
+            container.innerHTML = '';
+            
+            document.querySelectorAll('.drop-target').forEach(t => {
+                t.innerHTML = '';
+            });
+
+            const shuffled = [...colors].sort(() => Math.random() - 0.5);
+            shuffled.forEach(color => {
+                const chip = document.createElement('div');
+                chip.className = 'word-chip';
+                chip.textContent = color;
+                chip.draggable = true;
+                chip.id = 'word-' + color;
+                
+                // 単語をつかんだ瞬間に発音！
+                chip.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text', color);
+                    speak(color); 
+                });
+
+                // タップのみでも聴けるように補言
+                chip.addEventListener('click', () => {
+                    speak(color);
+                });
+
+                container.appendChild(chip);
+            });
+        }
+
+        function allowDrop(e) { e.preventDefault(); }
+
+        function drop(e) {
+            e.preventDefault();
+            const draggedColor = e.dataTransfer.getData('text');
+            if (!draggedColor) return;
+            
+            let target = e.target;
+            while(target && !target.classList.contains('drop-target')) {
+                target = target.parentElement;
+            }
+            if(!target) return;
+            
+            const targetColor = target.getAttribute('data-color');
+
+            if(draggedColor === targetColor) {
+                target.innerHTML = `<span style="font-size:1.3rem; font-weight:bold;">✨ ${targetColor} ✨</span>`;
+                
+                const wordChip = document.getElementById('word-' + draggedColor);
+                if(wordChip) wordChip.style.display = 'none';
+                
+                scorePage2++;
+                if(scorePage2 === 7) {
+                    document.getElementById('next2').style.visibility = 'visible';
+                    setTimeout(() => { speak('Great job!'); }, 300);
+                }
+            } else {
+                speak("Try again!");
+            }
+        }
+
+        let currentFavorite = "";
+        function selectFavorite(color) {
+            currentFavorite = color;
+            document.getElementById('fav-text').textContent = `My favorite color is ${color}!`;
+            document.getElementById('speaker3').style.display = 'inline-flex';
+        }
+        function speakFavorite() {
+            if(currentFavorite) speak(`My favorite color is ${currentFavorite}!`);
+        }
+
+        function setupPage4() {
+            document.getElementById('final-text').style.display = 'none';
+            document.getElementById('speaker4').style.display = 'none';
+            document.getElementById('final-rainbow').style.transform = "scale(1)";
+        }
+
+        function triggerFinale() {
+            const r = document.getElementById('final-rainbow');
+            const t = document.getElementById('final-text');
+            const s = document.getElementById('speaker4');
+            r.style.transform = "scale(1.3) rotate(360deg)";
+            r.style.transition = "transform 0.5s ease";
+            t.style.display = 'block';
+            s.style.display = 'inline-flex';
+            setTimeout(() => { r.style.transform = "scale(1)"; }, 500);
+        }
+    </script>
+</body>
+</html>
