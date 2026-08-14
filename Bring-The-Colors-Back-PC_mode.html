@@ -542,8 +542,7 @@
       
       document.getElementById("target-text").textContent = stage.text;
       document.getElementById("instruction").textContent = "Listen & Tap! 🔊";
-      document.getElementById("feedback").textContent = "";
-      document.getElementById("feedback").className = "feedback";
+      showFeedback("", "");
       document.getElementById("main-card").style.backgroundColor = "#ffffff";
       
       document.getElementById("next-btn").style.display = "none";
@@ -692,6 +691,7 @@
       });
     }
 
+    /* ★ 正解時に Try again! の文字をクリアする修正 ★ */
     function handleSuccess(isVoice = false) {
       stopAllMicProcess();
 
@@ -702,6 +702,9 @@
       targetIcon.className = "target-image colored";
       document.getElementById("main-card").style.backgroundColor = stage.bg;
       
+      // Try again! などをクリア！
+      showFeedback("", "");
+
       document.getElementById(`seg-${currentStage}`).classList.add("active");
       document.getElementById("instruction").textContent = "Say it! 🎤";
       
@@ -759,7 +762,6 @@
       }
     }
 
-    /* ★ リアルタイム正解参照へバグ修正 ★ */
     function renderColorOnlyTiles() {
       const grid = document.getElementById("color-grid");
       grid.innerHTML = "";
@@ -772,7 +774,6 @@
         tile.style.backgroundColor = st.hex;
         tile.onclick = () => {
           initAudioContext();
-          // タップした瞬間の「現在の正解」を取得する！
           const currentCorrectStage = currentStages[currentStage];
           if (st.color === currentCorrectStage.color) {
             handleSuccess(false);
