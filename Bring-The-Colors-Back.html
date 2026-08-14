@@ -315,7 +315,7 @@
   </div>
 
   <div class="card" id="main-card">
-    <div class="instruction" id="instruction">🔊 おとをきいてね！</div>
+    <div class="instruction" id="instruction">🔊 ボタンをおして おとをきこう！</div>
     
     <div class="target-image gray" id="target-icon">🌹</div>
     <div class="target-text" id="target-text">a red flower</div>
@@ -323,7 +323,8 @@
     <div class="btn-group">
       <button class="btn-icon btn-listen" onclick="playAudio()" aria-label="Listen">🔊</button>
       <button class="btn-icon btn-speak" id="speak-btn" onclick="startListening()" aria-label="Speak">🎤</button>
-      <button class="btn-icon btn-record" id="play-user-btn" onclick="playRecordedAudio()" aria-label="Play recorded voice">👂</button>
+      <!-- ★耳（👂）から再生（▶️）に変更 ★ -->
+      <button class="btn-icon btn-record" id="play-user-btn" onclick="playRecordedAudio()" aria-label="Play recorded voice">▶️</button>
     </div>
 
     <div class="feedback" id="feedback"></div>
@@ -353,6 +354,9 @@
     <button class="btn-start" style="padding: 14px 28px;" onclick="resetGame()">🔄 もういっかい</button>
   </div>
 
+  <!-- 電子黒板用の確実に鳴る音声再生要素 -->
+  <audio id="user-audio-player" style="display:none;"></audio>
+
   <script>
     const masterStages = [
       { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹", colorKeys: ["red", "レッド", "れっど"], nounKeys: ["flower", "フラワー", "ふらわー"] },
@@ -368,7 +372,7 @@
     let currentStage = 0;
     let mediaRecorder = null;
     let audioChunks = [];
-    let recordedAudioBlob = null;
+    let recordedAudioUrl = null;
     let persistentAudioStream = null;
     let recognition = null;
 
@@ -511,17 +515,19 @@
       targetIcon.className = "target-image gray";
       
       document.getElementById("target-text").textContent = stage.text;
-      document.getElementById("instruction").textContent = "🔊 おとをきいてね！";
+      document.getElementById("instruction").textContent = "🔊 ボタンをおして おとをきこう！";
       document.getElementById("feedback").textContent = "";
       document.getElementById("feedback").className = "feedback";
       document.getElementById("main-card").style.backgroundColor = "#ffffff";
       
       document.getElementById("play-user-btn").style.display = "none";
       document.getElementById("next-btn").style.display = "none";
-      recordedAudioBlob = null;
+      recordedAudioUrl = null;
 
       renderColorOnlyTiles();
-      setTimeout(() => playAudio(), 400);
+      
+      // ★電子黒板のエラー防止：自動再生をオフにし、スピーカーボタンを促す★
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
     }
 
     function speakText(text) {
@@ -540,11 +546,10 @@
       speakText(stage.text);
     }
 
-    /* ★ 毎回フレッシュな SpeechRecognition インスタンスを作成して起動 ★ */
     function startListening() {
       initAudioContext();
       
-      // 読み上げ音声を即停止（マイクとの干渉防止）
+      // 読み上げ音声を即停止してマイクをクリアに開く
       if (window.speechSynthesis) window.speechSynthesis.cancel();
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -553,7 +558,6 @@
         return;
       }
 
-      // 前回の認識が動いていれば停止
       if (recognition) {
         try { recognition.abort(); } catch(e){}
       }
@@ -580,7 +584,6 @@
         checkAnswer(spokenText);
       };
 
-      /* ★ 準備不足や一瞬の無音エラー（aborted / no-speech）ではブブーを鳴らさない ★ */
       recognition.onerror = (event) => {
         stopVoiceRecording();
         console.log("SpeechRecognition Error:", event.error);
@@ -617,11 +620,13 @@
     }
 
     function initRecorderInstance() {
-      const options = MediaRecorder.isTypeSupported('audio/webm') 
-        ? { mimeType: 'audio/webm' } 
-        : MediaRecorder.isTypeSupported('audio/mp4') 
-          ? { mimeType: 'audio/mp4' } 
-          : {};
+      // RICOH等の電子黒板ブラウザに対応するフォーマット順
+      let mimeType = '';
+      if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+      else if (MediaRecorder.isTypeSupported('audio/aac')) mimeType = 'audio/aac';
+      else if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+
+      const options = mimeType ? { mimeType } : {};
 
       mediaRecorder = new MediaRecorder(persistentAudioStream, options);
       
@@ -630,7 +635,13 @@
       };
 
       mediaRecorder.onstop = () => {
-        recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
+        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
+        recordedAudioUrl = URL.createObjectURL(blob);
+        
+        // 音声プレイヤーにセット
+        const player = document.getElementById("user-audio-player");
+        player.src = recordedAudioUrl;
+
         document.getElementById("play-user-btn").style.display = "inline-flex";
       };
 
@@ -643,33 +654,20 @@
       }
     }
 
-    async function playRecordedAudio() {
+    /* ★電子黒板用：確実に自分の声をスピーカー再生する処理 ★ */
+    function playRecordedAudio() {
       initAudioContext();
-      if (!recordedAudioBlob) {
+      const player = document.getElementById("user-audio-player");
+      if (!player.src || player.src === "") {
         alert("声がうまく録音できませんでした。もう一度喋ってみてね！");
         return;
       }
 
-      try {
-        const arrayBuffer = await recordedAudioBlob.arrayBuffer();
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-
-        const source = audioCtx.createBufferSource();
-        const gainNode = audioCtx.createGain();
-
-        gainNode.gain.value = 1.0;
-
-        source.buffer = audioBuffer;
-        source.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-
-        source.start(0);
-      } catch (e) {
-        console.log("音声再生エラー:", e);
-        const audioUrl = URL.createObjectURL(recordedAudioBlob);
-        const audio = new Audio(audioUrl);
-        audio.play();
-      }
+      // 音声を最初から再生
+      player.currentTime = 0;
+      player.play().catch(e => {
+        console.log("再生エラー:", e);
+      });
     }
 
     function handleSuccess() {
