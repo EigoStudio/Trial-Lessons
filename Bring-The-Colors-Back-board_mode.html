@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Help us Bring the Colors Back! (Ver.2 Board)</title>
+  <title>Help us Bring the Colors Back! (Ver.2 Popup Recording)</title>
   <script src="auth.js"></script>
   <style>
     :root {
@@ -78,10 +78,10 @@
       transition: background-color 0.5s ease;
     }
     .instruction {
-      font-size: 0.95rem;
+      font-size: 1.1rem;
       color: #7f8c8d;
       margin-bottom: 4px;
-      font-weight: bold;
+      font-weight: 800;
     }
     
     .target-image {
@@ -103,10 +103,10 @@
     }
 
     .target-text {
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       font-weight: 900;
       color: #2c3e50;
-      margin: 2px 0 8px 0;
+      margin: 4px 0 10px 0;
     }
 
     .btn-group {
@@ -140,14 +140,7 @@
     .btn-speak {
       background: linear-gradient(135deg, #e74c3c, #c0392b);
     }
-    .btn-speak.recording {
-      animation: pulse 1s infinite;
-      background: linear-gradient(135deg, #2ecc71, #27ae60);
-    }
-    .btn-play {
-      background: linear-gradient(135deg, #9b59b6, #8e44ad);
-      display: none;
-    }
+
     .btn-next {
       border: none;
       background: linear-gradient(135deg, #2ecc71, #27ae60);
@@ -214,6 +207,64 @@
     }
     .color-tile:active {
       transform: scale(0.88);
+    }
+
+    /* ★ 録音専用モーダルポップアップのスタイル ★ */
+    .rec-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+    }
+    .rec-modal-card {
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 24px;
+      width: 85%;
+      max-width: 340px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      animation: modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes modal-pop {
+      0% { transform: scale(0.7); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .modal-target-phrase {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: #2c3e50;
+      margin-bottom: 16px;
+    }
+    .modal-status {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #e67e22;
+      margin-bottom: 20px;
+    }
+    .btn-modal-rec {
+      width: 80px;
+      height: 80px;
+      font-size: 2.5rem;
+      border-radius: 50%;
+      border: none;
+      color: white;
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+      margin-bottom: 12px;
+    }
+    .btn-modal-rec.recording {
+      animation: pulse 1s infinite;
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+    }
+    .btn-modal-play {
+      background: linear-gradient(135deg, #9b59b6, #8e44ad);
+      display: none;
     }
 
     .intro-overlay {
@@ -314,15 +365,14 @@
   </div>
 
   <div class="card" id="main-card">
-    <div class="instruction" id="instruction">🔊 おとをきいて 🎤 こえを吹き込もう！</div>
+    <div class="instruction" id="instruction">Listen & Tap! 🔊</div>
     
     <div class="target-image gray" id="target-icon">🌹</div>
     <div class="target-text" id="target-text">a red flower</div>
     
     <div class="btn-group">
       <button class="btn-icon btn-listen" onclick="playAudio()" aria-label="Listen">🔊</button>
-      <button class="btn-icon btn-speak" id="speak-btn" onclick="toggleRecording()" aria-label="Speak">🎤</button>
-      <button class="btn-icon btn-play" id="play-btn" onclick="playRecordedAudio()" aria-label="Play">▶️</button>
+      <button class="btn-icon btn-speak" id="speak-btn" onclick="openRecordingModal()" aria-label="Speak">🎤</button>
     </div>
 
     <div class="feedback" id="feedback"></div>
@@ -331,6 +381,18 @@
   </div>
 
   <div class="color-grid" id="color-grid"></div>
+
+  <!-- ★ 録音専用ポップアップダイアログ ★ -->
+  <div class="rec-modal-overlay" id="rec-modal">
+    <div class="rec-modal-card">
+      <div class="modal-target-phrase" id="modal-target-phrase">a red flower</div>
+      <div class="modal-status" id="modal-status">🎤 ボタンを押してね！</div>
+      <div>
+        <button class="btn-modal-rec" id="modal-rec-btn" onclick="toggleModalRecording()">🎤</button>
+        <button class="btn-modal-rec btn-modal-play" id="modal-play-btn" onclick="playModalAudio()">▶️</button>
+      </div>
+    </div>
+  </div>
 
   <div class="intro-overlay" id="intro-overlay">
     <div class="intro-character">🥺🌈</div>
@@ -370,8 +432,8 @@
     let mediaRecorder = null;
     let audioChunks = [];
     let recordedAudioUrl = null;
-    let persistentAudioStream = null;
-    let isRecording = false;
+    let modalStream = null;
+    let isModalRecording = false;
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -466,42 +528,10 @@
       });
     }
 
-    async function ensureMicrophone() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("この端末/ブラウザではマイク録音に対応していません。");
-      }
-
-      // Reuse the same stream throughout the game. If the stream was ended,
-      // acquire a fresh one (important after changing stages / restarting).
-      if (
-        persistentAudioStream &&
-        persistentAudioStream.getAudioTracks().some(track => track.readyState === "live")
-      ) {
-        return persistentAudioStream;
-      }
-
-      persistentAudioStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
-
-      return persistentAudioStream;
-    }
-
     async function startGame() {
       playStartSound();
       currentStages = shuffleArray(masterStages);
       currentStage = 0;
-
-      try {
-        await ensureMicrophone();
-      } catch (err) {
-        console.log("マイク許可エラー:", err);
-        showFeedback("マイクを許可してね 🎤", "try-again");
-      }
 
       const overlay = document.getElementById("intro-overlay");
       overlay.style.transition = "opacity 0.6s ease";
@@ -514,23 +544,6 @@
     }
 
     function initStage() {
-      // Never let a previous stage's recorder/audio leak into the next stage.
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        try { mediaRecorder.stop(); } catch (_) {}
-      }
-      isRecording = false;
-      audioChunks = [];
-
-      const player = document.getElementById("user-audio-player");
-      player.pause();
-      player.removeAttribute("src");
-      player.load();
-
-      if (recordedAudioUrl) {
-        URL.revokeObjectURL(recordedAudioUrl);
-        recordedAudioUrl = null;
-      }
-
       const stage = currentStages[currentStage];
       
       const targetIcon = document.getElementById("target-icon");
@@ -538,25 +551,19 @@
       targetIcon.className = "target-image gray";
       
       document.getElementById("target-text").textContent = stage.text;
-      document.getElementById("instruction").textContent = "🔊 おとをきいて 🎤 こえを吹き込もう！";
+      document.getElementById("instruction").textContent = "Listen & Tap! 🔊";
       document.getElementById("feedback").textContent = "";
       document.getElementById("feedback").className = "feedback";
       document.getElementById("main-card").style.backgroundColor = "#ffffff";
       
       document.getElementById("next-btn").style.display = "none";
-      document.getElementById("play-btn").style.display = "none";
-      
-      const speakBtn = document.getElementById("speak-btn");
-      speakBtn.textContent = "🎤";
-      speakBtn.classList.remove("recording");
-      isRecording = false;
 
       renderColorOnlyTiles();
 
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     }
 
-    function speakText(text) {
+    function speakText(text, onEndedCallback) {
       initAudioContext();
       if (window.speechSynthesis) window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
@@ -564,6 +571,7 @@
       utterance.lang = "en-US";
       utterance.rate = 0.65;
       utterance.pitch = 1.15;
+      if (onEndedCallback) utterance.onend = onEndedCallback;
       window.speechSynthesis.speak(utterance);
     }
 
@@ -572,143 +580,118 @@
       speakText(stage.text);
     }
 
-    /* ★ 電子黒板用：ステージをまたいでも安定するマイク録音処理 ★ */
-    async function toggleRecording() {
+    /* ★ ポップアップ制御関数 ★ */
+    function openRecordingModal() {
       initAudioContext();
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      const stage = currentStages[currentStage];
+      document.getElementById("modal-target-phrase").textContent = stage.text;
+      document.getElementById("modal-status").textContent = "🎤 ボタンを押してね！";
+      
+      document.getElementById("modal-rec-btn").style.display = "inline-block";
+      document.getElementById("modal-rec-btn").textContent = "🎤";
+      document.getElementById("modal-rec-btn").classList.remove("recording");
+      document.getElementById("modal-play-btn").style.display = "none";
 
-      const speakBtn = document.getElementById("speak-btn");
-      const player = document.getElementById("user-audio-player");
+      isModalRecording = false;
+      document.getElementById("rec-modal").style.display = "flex";
+    }
 
-      // Start recording
-      if (!isRecording) {
+    function closeRecordingModal() {
+      document.getElementById("rec-modal").style.display = "none";
+      if (modalStream) {
+        try { modalStream.getTracks().forEach(t => t.stop()); } catch(e){}
+        modalStream = null;
+      }
+    }
+
+    async function toggleModalRecording() {
+      const recBtn = document.getElementById("modal-rec-btn");
+      const statusText = document.getElementById("modal-status");
+
+      if (!isModalRecording) {
         try {
-          const stream = await ensureMicrophone();
-
-          // A previous recorder can still exist after a very quick stage change.
-          if (mediaRecorder && mediaRecorder.state !== "inactive") {
-            try { mediaRecorder.stop(); } catch (_) {}
-          }
-
+          // ポップアップ起動時のみフレッシュなストリームを取得
+          modalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           audioChunks = [];
-          recordedAudioUrl = null;
 
-          // Release the old object URL before creating a new recording.
-          if (player.src && player.src.startsWith("blob:")) {
-            URL.revokeObjectURL(player.src);
-          }
-          player.removeAttribute("src");
-          player.load();
-          document.getElementById("play-btn").style.display = "none";
-
-          // Prefer WebM/Opus on Chrome-based electronic boards.
-          // Some boards expose MP4 instead, so keep fallbacks.
-          const mimeCandidates = [
-            "audio/webm;codecs=opus",
-            "audio/webm",
-            "audio/mp4",
-            "audio/ogg;codecs=opus"
-          ];
-          let mimeType = "";
-          if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported) {
-            mimeType = mimeCandidates.find(type => MediaRecorder.isTypeSupported(type)) || "";
+          let options = {};
+          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            options = { mimeType: 'audio/webm;codecs=opus' };
+          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            options = { mimeType: 'audio/mp4' };
           }
 
-          if (typeof MediaRecorder === "undefined") {
-            throw new Error("このブラウザでは MediaRecorder が利用できません。");
-          }
+          mediaRecorder = new MediaRecorder(modalStream, options);
 
-          const recorder = mimeType
-            ? new MediaRecorder(stream, { mimeType })
-            : new MediaRecorder(stream);
-
-          // Keep the recorder associated with THIS recording.
-          // Do not depend on the global mediaRecorder inside onstop.
-          mediaRecorder = recorder;
-          isRecording = true;
-
-          speakBtn.textContent = "👂";
-          speakBtn.classList.add("recording");
-          showFeedback("きいているよ... 🎤", "success");
-
-          recorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-              audioChunks.push(e.data);
-            }
+          mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) audioChunks.push(e.data);
           };
 
-          recorder.onerror = (e) => {
-            console.log("録音エラー:", e);
-            isRecording = false;
-            speakBtn.textContent = "🎤";
-            speakBtn.classList.remove("recording");
-            showFeedback("録音できなかったよ。もう一度ためしてね。", "try-again");
-          };
-
-          recorder.onstop = () => {
-            const finalMime = recorder.mimeType || mimeType || "audio/webm";
-            const blob = new Blob(audioChunks, { type: finalMime });
-
-            // Ignore an empty recording.
-            if (!blob.size) {
-              showFeedback("声が録音されなかったよ。もう一度ためしてね。", "try-again");
-              return;
-            }
-
+          mediaRecorder.onstop = () => {
+            const mimeType = mediaRecorder ? mediaRecorder.mimeType : 'audio/wav';
+            const blob = new Blob(audioChunks, { type: mimeType });
+            
+            if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
             recordedAudioUrl = URL.createObjectURL(blob);
+            
+            const player = document.getElementById("user-audio-player");
             player.src = recordedAudioUrl;
-            player.load();
 
-            document.getElementById("play-btn").style.display = "inline-flex";
+            // マイク権限を破棄してセッションをクローズ
+            if (modalStream) {
+              modalStream.getTracks().forEach(t => t.stop());
+              modalStream = null;
+            }
 
-            // Autoplay after the user has just interacted with the board.
-            playRecordedAudio();
+            recBtn.style.display = "none";
+            document.getElementById("modal-play-btn").style.display = "inline-block";
+            statusText.textContent = "▶️ ボタンでおとをきこう！";
           };
 
-          // Small timeslice gives us data reliably on Chrome/Chromium boards.
-          recorder.start(250);
+          mediaRecorder.start(100);
+          isModalRecording = true;
+          recBtn.textContent = "👂";
+          recBtn.classList.add("recording");
+          statusText.textContent = "きいているよ... 🎤 (もう1回押してストップ)";
 
         } catch (err) {
-          console.log("録音開始エラー:", err);
-          isRecording = false;
-          speakBtn.textContent = "🎤";
-          speakBtn.classList.remove("recording");
-          showFeedback("マイクを使えません。マイクの許可を確認してね。", "try-again");
+          console.log("ポップアップマイク起動エラー:", err);
+          alert("マイクが起動できませんでした。もう一度お試しください。");
         }
 
-        return;
-      }
-
-      // Stop recording
-      isRecording = false;
-      speakBtn.textContent = "🎤";
-      speakBtn.classList.remove("recording");
-      showFeedback("きいてみよう！ 🎵", "success");
-
-      const recorder = mediaRecorder;
-      if (recorder && recorder.state === "recording") {
-        try {
-          recorder.stop();
-        } catch (err) {
-          console.log("録音停止エラー:", err);
+      } else {
+        isModalRecording = false;
+        recBtn.classList.remove("recording");
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.stop();
         }
       }
     }
 
-    function playRecordedAudio() {
+    function playModalAudio() {
       initAudioContext();
       const player = document.getElementById("user-audio-player");
-      if (!player.src) return;
+      if (!player.src || player.src === "") return;
 
+      const stage = currentStages[currentStage];
       player.currentTime = 0;
-      const promise = player.play();
 
-      if (promise && typeof promise.catch === "function") {
-        promise.catch(e => {
-          console.log("再生エラー:", e);
-          showFeedback("再生できなかったよ。▶️を押してもう一度きいてね。", "try-again");
+      // 自分の声が鳴り終わったらポップアップを閉じ、お祝いボイスを再生！
+      player.onended = () => {
+        closeRecordingModal();
+
+        const storyVoice = `Good job! ${stage.color} is back! Now, let's save another color!`;
+        document.getElementById("instruction").textContent = `${stage.color} is back! ✨`;
+        
+        speakText(storyVoice, () => {
+          document.getElementById("next-btn").style.display = "inline-flex";
         });
-      }
+      };
+
+      player.play().catch(e => {
+        console.log("再生エラー:", e);
+        closeRecordingModal();
+      });
     }
 
     function handleSuccess() {
@@ -719,11 +702,8 @@
       targetIcon.className = "target-image colored";
       document.getElementById("main-card").style.backgroundColor = stage.bg;
       
-      showFeedback("Good job! ✨", "success");
-      speakText("Good job!");
-
+      document.getElementById("instruction").textContent = "Say it! 🎤";
       document.getElementById(`seg-${currentStage}`).classList.add("active");
-      document.getElementById("next-btn").style.display = "inline-flex";
     }
 
     function nextStage() {
@@ -751,18 +731,12 @@
           if (st.color === currentCorrectStage.color) {
             handleSuccess();
           } else {
-            showFeedback("Try again! 🔍", "try-again");
+            document.getElementById("instruction").textContent = "Try again! 🔍";
             speakText("Try again!");
           }
         };
         grid.appendChild(tile);
       });
-    }
-
-    function showFeedback(text, type) {
-      const fb = document.getElementById("feedback");
-      fb.textContent = text;
-      fb.className = `feedback ${type}`;
     }
 
     function showCelebration() {
@@ -788,22 +762,6 @@
     }
 
     function resetGame() {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        try { mediaRecorder.stop(); } catch (_) {}
-      }
-      isRecording = false;
-      audioChunks = [];
-
-      const player = document.getElementById("user-audio-player");
-      player.pause();
-      player.removeAttribute("src");
-      player.load();
-
-      if (recordedAudioUrl) {
-        URL.revokeObjectURL(recordedAudioUrl);
-        recordedAudioUrl = null;
-      }
-
       currentStage = 0;
       document.querySelectorAll(".rainbow-segment").forEach(s => s.classList.remove("active"));
       document.getElementById("celebration").style.display = "none";
