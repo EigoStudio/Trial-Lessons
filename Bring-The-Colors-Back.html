@@ -370,6 +370,7 @@
     let audioChunks = [];
     let recordedAudioBlob = null;
     let persistentAudioStream = null;
+    let recognition = null;
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -525,7 +526,7 @@
 
     function speakText(text) {
       initAudioContext();
-      window.speechSynthesis.cancel();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       if (preferredVoice) utterance.voice = preferredVoice;
       utterance.lang = "en-US";
@@ -539,10 +540,24 @@
       speakText(stage.text);
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = null;
+    /* ★ 毎回フレッシュな SpeechRecognition インスタンスを作成して起動 ★ */
+    function startListening() {
+      initAudioContext();
+      
+      // 読み上げ音声を即停止（マイクとの干渉防止）
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
 
-    if (SpeechRecognition) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("音声認識に対応していません。色ブロックをタップしてね！");
+        return;
+      }
+
+      // 前回の認識が動いていれば停止
+      if (recognition) {
+        try { recognition.abort(); } catch(e){}
+      }
+
       recognition = new SpeechRecognition();
       recognition.lang = 'en-US';
       recognition.interimResults = false;
@@ -565,27 +580,23 @@
         checkAnswer(spokenText);
       };
 
-      recognition.onerror = () => {
+      /* ★ 準備不足や一瞬の無音エラー（aborted / no-speech）ではブブーを鳴らさない ★ */
+      recognition.onerror = (event) => {
         stopVoiceRecording();
-        playErrorSound();
-        showFeedback("Try again! 🎵", "try-again");
-        speakText("Try again!");
+        console.log("SpeechRecognition Error:", event.error);
+        if (event.error !== 'aborted' && event.error !== 'no-speech') {
+          playErrorSound();
+          showFeedback("Try again! 🎵", "try-again");
+          speakText("Try again!");
+        }
       };
-    }
 
-    function startListening() {
-      initAudioContext();
-      if (!recognition) {
-        alert("音声認識に対応していません。色ブロックをタップしてね！");
-        return;
-      }
-      
       startVoiceRecording();
 
       try {
         recognition.start();
       } catch (e) {
-        console.log("音声認識スタート処理:", e);
+        console.log("音声認識スタートエラー:", e);
       }
     }
 
@@ -677,7 +688,6 @@
       document.getElementById("next-btn").style.display = "inline-flex";
     }
 
-    /* 正誤判定とメッセージ発声を連動 */
     function checkAnswer(input) {
       const stage = currentStages[currentStage];
       
