@@ -619,7 +619,7 @@
       recognition.onresult = (event) => {
         if (event.results && event.results[0] && event.results[0][0]) {
           const spokenText = event.results[0][0].transcript.toLowerCase();
-          checkAnswer(spokenText);
+          checkAnswer(spokenText, true); // マイク経由フラグ: true
         }
       };
 
@@ -708,15 +708,13 @@
       });
     }
 
-    /* ★ 正解時にマイクを完全遮断してポップアップ画面を安全に開く ★ */
-    function handleSuccess() {
-      // 1. マイクと音声認識を完全停止
+    /* ★ 正解処理（isVoice: マイク経由で正解した時のみポップアップを表示） ★ */
+    function handleSuccess(isVoice = false) {
       if (recognition) {
         try { recognition.abort(); } catch(e){}
       }
       stopVoiceRecording();
 
-      // 2. 音効と演出
       const stage = currentStages[currentStage];
       playSuccessSound();
       
@@ -730,10 +728,15 @@
       document.getElementById(`seg-${currentStage}`).classList.add("active");
       document.getElementById("instruction").textContent = "🎤 はなしてみよう！";
       
-      // 3. マイク停止後に安全にポップアップ表示
-      setTimeout(() => {
-        document.getElementById("voice-modal").style.display = "flex";
-      }, 800);
+      if (isVoice) {
+        // マイクで喋って正解した時だけポップアップを表示
+        setTimeout(() => {
+          document.getElementById("voice-modal").style.display = "flex";
+        }, 800);
+      } else {
+        // 色タイルタップで正解した時は直接「次へ」ボタンを表示
+        document.getElementById("next-btn").style.display = "inline-flex";
+      }
     }
 
     function closeModalAndNext() {
@@ -741,14 +744,14 @@
       nextStage();
     }
 
-    function checkAnswer(input) {
+    function checkAnswer(input, isVoice = false) {
       const stage = currentStages[currentStage];
       
       const hasColor = stage.colorKeys.some(ck => input.includes(ck));
       const hasNoun = stage.nounKeys.some(nk => input.includes(nk));
 
       if (hasColor && hasNoun) {
-        handleSuccess();
+        handleSuccess(isVoice);
       } else {
         showFeedback("Try again! 🎵", "try-again");
         speakText("Try again!");
@@ -778,7 +781,7 @@
         tile.onclick = () => {
           initAudioContext();
           if (st.color === currentCorrectStage.color) {
-            handleSuccess();
+            handleSuccess(false); // タップによる正解（マイク未使用）
           } else {
             showFeedback("Try again! 🔍", "try-again");
             speakText("Try again!");
