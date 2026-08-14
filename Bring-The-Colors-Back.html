@@ -144,11 +144,6 @@
       animation: pulse 1s infinite;
       background: linear-gradient(135deg, #2ecc71, #27ae60);
     }
-    .btn-record {
-      background: linear-gradient(135deg, #9b59b6, #8e44ad);
-      display: none;
-      border: 3px solid #f1c40f;
-    }
     .btn-next {
       border: none;
       background: linear-gradient(135deg, #2ecc71, #27ae60);
@@ -323,7 +318,6 @@
     <div class="btn-group">
       <button class="btn-icon btn-listen" onclick="playAudio()" aria-label="Listen">🔊</button>
       <button class="btn-icon btn-speak" id="speak-btn" onclick="startListening()" aria-label="Speak">🎤</button>
-      <button class="btn-icon btn-record" id="play-user-btn" onclick="playRecordedAudio()" aria-label="Play recorded voice">▶️</button>
     </div>
 
     <div class="feedback" id="feedback"></div>
@@ -353,8 +347,6 @@
     <button class="btn-start" style="padding: 14px 28px;" onclick="resetGame()">🔄 もういっかい</button>
   </div>
 
-  <audio id="user-audio-player" style="display:none;"></audio>
-
   <script>
     const masterStages = [
       { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹", colorKeys: ["red", "レッド", "れっど"], nounKeys: ["flower", "フラワー", "ふらわー"] },
@@ -368,12 +360,8 @@
 
     let currentStages = [];
     let currentStage = 0;
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let recordedAudioUrl = null;
-    let persistentAudioStream = null;
     let recognition = null;
-    let isProcessingRecognition = false;
+    let isListening = false;
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -450,21 +438,6 @@
       osc2.stop(now + 0.5);
     }
 
-    function playErrorSound() {
-      initAudioContext();
-      const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(160, now);
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.4);
-    }
-
     function playFanfare() {
       initAudioContext();
       const notes = [523.25, 659.25, 783.99, 1046.50];
@@ -487,14 +460,6 @@
       playStartSound();
       currentStages = shuffleArray(masterStages);
       currentStage = 0;
-
-      try {
-        if (!persistentAudioStream) {
-          persistentAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        }
-      } catch (err) {
-        console.log("マイク許可エラー:", err);
-      }
 
       const overlay = document.getElementById("intro-overlay");
       overlay.style.transition = "opacity 0.6s ease";
@@ -519,9 +484,7 @@
       document.getElementById("feedback").className = "feedback";
       document.getElementById("main-card").style.backgroundColor = "#ffffff";
       
-      document.getElementById("play-user-btn").style.display = "none";
       document.getElementById("next-btn").style.display = "none";
-      recordedAudioUrl = null;
 
       renderColorOnlyTiles();
 
@@ -544,7 +507,6 @@
       speakText(stage.text);
     }
 
-    /* ★ RICOH電子黒板用：マイク準備遅延（150msウェイト）と完全クリーンアップ実装 ★ */
     function startListening() {
       initAudioContext();
       
@@ -556,133 +518,59 @@
         return;
       }
 
-      // 1. 完全クリーンアップ（過去の壊れたセッションを徹底破棄）
-      if (recognition) {
-        recognition.onstart = null;
-        recognition.onend = null;
-        recognition.onresult = null;
-        recognition.onerror = null;
+      if (isListening && recognition) {
         try { recognition.abort(); } catch(e){}
-        recognition = null;
-      }
-
-      isProcessingRecognition = false;
-
-      // 2. 電子黒板の自動ゲイン調整（AGC）を待つため、わずかなウェイト（150ms）を挟む
-      setTimeout(() => {
-        recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-
-        recognition.onstart = () => {
-          const btn = document.getElementById("speak-btn");
-          btn.classList.add("listening");
-          btn.textContent = "👂";
-        };
-
-        recognition.onend = () => {
-          const btn = document.getElementById("speak-btn");
-          btn.classList.remove("listening");
-          btn.textContent = "🎤";
-          stopVoiceRecording();
-        };
-
-        recognition.onresult = (event) => {
-          isProcessingRecognition = true;
-          if (event.results && event.results[0] && event.results[0][0]) {
-            const spokenText = event.results[0][0].transcript.toLowerCase();
-            checkAnswer(spokenText);
-          }
-        };
-
-        /* ★ 電子黒板の準備遅延エラー（audio-capture / not-allowed / no-speech）はブブーを鳴らさない ★ */
-        recognition.onerror = (event) => {
-          stopVoiceRecording();
-          console.log("SpeechRecognition Error:", event.error);
-          
-          // 実際に聞き取り処理まで行って言葉が違った時だけ不合格判定
-          const isHardwareError = ['audio-capture', 'not-allowed', 'aborted', 'no-speech', 'network'].includes(event.error);
-          if (!isHardwareError) {
-            playErrorSound();
-            showFeedback("Try again! 🎵", "try-again");
-            speakText("Try again!");
-          }
-        };
-
-        startVoiceRecording();
-
-        try {
-          recognition.start();
-        } catch (e) {
-          console.log("音声認識スタートエラー:", e);
-        }
-      }, 150);
-    }
-
-    function startVoiceRecording() {
-      try {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-          mediaRecorder.stop();
-        }
-        audioChunks = [];
-        if (persistentAudioStream) {
-          initRecorderInstance();
-        } else {
-          navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-            persistentAudioStream = stream;
-            initRecorderInstance();
-          }).catch(err => console.log("マイクストリーム取得エラー:", err));
-        }
-      } catch (err) {
-        console.log("マイク録音エラー:", err);
-      }
-    }
-
-    function initRecorderInstance() {
-      let mimeType = '';
-      if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
-      else if (MediaRecorder.isTypeSupported('audio/aac')) mimeType = 'audio/aac';
-      else if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
-
-      const options = mimeType ? { mimeType } : {};
-
-      mediaRecorder = new MediaRecorder(persistentAudioStream, options);
-      
-      mediaRecorder.ondataavailable = e => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
-        recordedAudioUrl = URL.createObjectURL(blob);
-        
-        const player = document.getElementById("user-audio-player");
-        player.src = recordedAudioUrl;
-
-        document.getElementById("play-user-btn").style.display = "inline-flex";
-      };
-
-      mediaRecorder.start(100);
-    }
-
-    function stopVoiceRecording() {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
-      }
-    }
-
-    function playRecordedAudio() {
-      initAudioContext();
-      const player = document.getElementById("user-audio-player");
-      if (!player.src || player.src === "") {
-        alert("声がうまく録音できませんでした。もう一度喋ってみてね！");
         return;
       }
 
-      player.currentTime = 0;
-      player.play().catch(e => {
-        console.log("再生エラー:", e);
-      });
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        isListening = true;
+        const btn = document.getElementById("speak-btn");
+        btn.classList.add("listening");
+        btn.textContent = "👂";
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        const btn = document.getElementById("speak-btn");
+        btn.classList.remove("listening");
+        btn.textContent = "🎤";
+      };
+
+      recognition.onresult = (event) => {
+        if (event.results && event.results[0] && event.results[0][0]) {
+          const spokenText = event.results[0][0].transcript.toLowerCase();
+          checkAnswer(spokenText);
+        }
+      };
+
+      /* ★ エラー音（ブブッ）は発声させず、メッセージとボイスのみで案内 ★ */
+      recognition.onerror = (event) => {
+        isListening = false;
+        const btn = document.getElementById("speak-btn");
+        btn.classList.remove("listening");
+        btn.textContent = "🎤";
+
+        console.log("SpeechRecognition Error:", event.error);
+        
+        if (event.error === 'no-speech') {
+          showFeedback("もう一度 喋ってみてね！ 🎤", "try-again");
+        } else if (event.error !== 'aborted' && event.error !== 'audio-capture' && event.error !== 'not-allowed') {
+          showFeedback("Try again! 🎵", "try-again");
+          speakText("Try again!");
+        }
+      };
+
+      try {
+        recognition.start();
+      } catch (e) {
+        console.log("音声認識スタート例外:", e);
+      }
     }
 
     function handleSuccess() {
@@ -710,7 +598,6 @@
       if (hasColor && hasNoun) {
         handleSuccess();
       } else {
-        playErrorSound();
         showFeedback("Try again! 🎵", "try-again");
         speakText("Try again!");
       }
@@ -741,7 +628,6 @@
           if (st.color === currentCorrectStage.color) {
             handleSuccess();
           } else {
-            playErrorSound();
             showFeedback("Try again! 🔍", "try-again");
             speakText("Try again!");
           }
