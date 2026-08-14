@@ -373,6 +373,7 @@
     let recordedAudioUrl = null;
     let persistentAudioStream = null;
     let recognition = null;
+    let isProcessingRecognition = false;
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -543,7 +544,7 @@
       speakText(stage.text);
     }
 
-    /* ★ 再度マイクを押した時に前回の「Try again」状態をリセットしてスタート ★ */
+    /* ★ RICOH電子黒板用：マイク準備遅延（150msウェイト）と完全クリーンアップ実装 ★ */
     function startListening() {
       initAudioContext();
       
@@ -555,7 +556,7 @@
         return;
       }
 
-      // 既存の認識インスタンスがあれば確実に完全リセット
+      // 1. 完全クリーンアップ（過去の壊れたセッションを徹底破棄）
       if (recognition) {
         recognition.onstart = null;
         recognition.onend = null;
@@ -565,47 +566,57 @@
         recognition = null;
       }
 
-      recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
-      recognition.interimResults = false;
+      isProcessingRecognition = false;
 
-      recognition.onstart = () => {
-        const btn = document.getElementById("speak-btn");
-        btn.classList.add("listening");
-        btn.textContent = "👂";
-      };
+      // 2. 電子黒板の自動ゲイン調整（AGC）を待つため、わずかなウェイト（150ms）を挟む
+      setTimeout(() => {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
 
-      recognition.onend = () => {
-        const btn = document.getElementById("speak-btn");
-        btn.classList.remove("listening");
-        btn.textContent = "🎤";
-        stopVoiceRecording();
-      };
+        recognition.onstart = () => {
+          const btn = document.getElementById("speak-btn");
+          btn.classList.add("listening");
+          btn.textContent = "👂";
+        };
 
-      recognition.onresult = (event) => {
-        if (event.results && event.results[0] && event.results[0][0]) {
-          const spokenText = event.results[0][0].transcript.toLowerCase();
-          checkAnswer(spokenText);
+        recognition.onend = () => {
+          const btn = document.getElementById("speak-btn");
+          btn.classList.remove("listening");
+          btn.textContent = "🎤";
+          stopVoiceRecording();
+        };
+
+        recognition.onresult = (event) => {
+          isProcessingRecognition = true;
+          if (event.results && event.results[0] && event.results[0][0]) {
+            const spokenText = event.results[0][0].transcript.toLowerCase();
+            checkAnswer(spokenText);
+          }
+        };
+
+        /* ★ 電子黒板の準備遅延エラー（audio-capture / not-allowed / no-speech）はブブーを鳴らさない ★ */
+        recognition.onerror = (event) => {
+          stopVoiceRecording();
+          console.log("SpeechRecognition Error:", event.error);
+          
+          // 実際に聞き取り処理まで行って言葉が違った時だけ不合格判定
+          const isHardwareError = ['audio-capture', 'not-allowed', 'aborted', 'no-speech', 'network'].includes(event.error);
+          if (!isHardwareError) {
+            playErrorSound();
+            showFeedback("Try again! 🎵", "try-again");
+            speakText("Try again!");
+          }
+        };
+
+        startVoiceRecording();
+
+        try {
+          recognition.start();
+        } catch (e) {
+          console.log("音声認識スタートエラー:", e);
         }
-      };
-
-      recognition.onerror = (event) => {
-        stopVoiceRecording();
-        console.log("SpeechRecognition Error:", event.error);
-        if (event.error !== 'aborted' && event.error !== 'no-speech') {
-          playErrorSound();
-          showFeedback("Try again! 🎵", "try-again");
-          speakText("Try again!");
-        }
-      };
-
-      startVoiceRecording();
-
-      try {
-        recognition.start();
-      } catch (e) {
-        console.log("音声認識スタートエラー:", e);
-      }
+      }, 150);
     }
 
     function startVoiceRecording() {
@@ -674,7 +685,6 @@
       });
     }
 
-    /* ★ 画面表示と褒め声を確実に Good job! に上書き切り替え ★ */
     function handleSuccess() {
       const stage = currentStages[currentStage];
       playSuccessSound();
@@ -683,7 +693,6 @@
       targetIcon.className = "target-image colored";
       document.getElementById("main-card").style.backgroundColor = stage.bg;
       
-      // Try again を上書きして Good job! を表示＆自動発声
       showFeedback("Good job! ✨", "success");
       speakText("Good job!");
 
