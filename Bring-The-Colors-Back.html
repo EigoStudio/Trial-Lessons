@@ -212,7 +212,6 @@
       transform: scale(0.88);
     }
 
-    /* ポップアップ（モーダル）スタイル */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -372,7 +371,6 @@
 
   <div class="color-grid" id="color-grid"></div>
 
-  <!-- 自分の声を聴くポップアップ画面 -->
   <div class="modal-overlay" id="voice-modal">
     <div class="modal-card">
       <div class="modal-title">Good job! ✨</div>
@@ -524,6 +522,7 @@
       currentStages = shuffleArray(masterStages);
       currentStage = 0;
 
+      // スタート時に一度確定でマイクパーミッションを掴む
       try {
         if (!persistentAudioStream) {
           persistentAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -579,6 +578,7 @@
       speakText(stage.text);
     }
 
+    /* ★ 電子黒板用：マイク起動をワンタップで確実に実行する強制リカバリー処理 ★ */
     function startListening() {
       initAudioContext();
       
@@ -595,6 +595,19 @@
         return;
       }
 
+      // マイクストリームの生存確認と再獲得
+      if (!persistentAudioStream) {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+          persistentAudioStream = stream;
+          executeRecognition();
+        }).catch(() => executeRecognition());
+      } else {
+        executeRecognition();
+      }
+    }
+
+    function executeRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognition = new SpeechRecognition();
       recognition.lang = 'en-US';
       recognition.interimResults = false;
@@ -619,7 +632,7 @@
       recognition.onresult = (event) => {
         if (event.results && event.results[0] && event.results[0][0]) {
           const spokenText = event.results[0][0].transcript.toLowerCase();
-          checkAnswer(spokenText, true); // マイク経由フラグ: true
+          checkAnswer(spokenText, true);
         }
       };
 
@@ -641,7 +654,10 @@
       try {
         recognition.start();
       } catch (e) {
-        console.log("音声認識スタート例外:", e);
+        // 電子黒板の起動漏れ発生時にコンマ数秒で自動再試行（2度押しを解消）
+        setTimeout(() => {
+          try { recognition.start(); } catch(err){}
+        }, 200);
       }
     }
 
@@ -651,41 +667,32 @@
           mediaRecorder.stop();
         }
         audioChunks = [];
-        if (persistentAudioStream) {
-          initRecorderInstance();
-        } else {
-          navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-            persistentAudioStream = stream;
-            initRecorderInstance();
-          }).catch(err => console.log("マイクストリーム取得エラー:", err));
-        }
+        
+        if (!persistentAudioStream) return;
+
+        let mimeType = '';
+        if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+        else if (MediaRecorder.isTypeSupported('audio/aac')) mimeType = 'audio/aac';
+        else if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+
+        const options = mimeType ? { mimeType } : {};
+        mediaRecorder = new MediaRecorder(persistentAudioStream, options);
+        
+        mediaRecorder.ondataavailable = e => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
+          recordedAudioUrl = URL.createObjectURL(blob);
+          const player = document.getElementById("user-audio-player");
+          player.src = recordedAudioUrl;
+        };
+
+        mediaRecorder.start(100);
       } catch (err) {
         console.log("マイク録音エラー:", err);
       }
-    }
-
-    function initRecorderInstance() {
-      let mimeType = '';
-      if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
-      else if (MediaRecorder.isTypeSupported('audio/aac')) mimeType = 'audio/aac';
-      else if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
-
-      const options = mimeType ? { mimeType } : {};
-
-      mediaRecorder = new MediaRecorder(persistentAudioStream, options);
-      
-      mediaRecorder.ondataavailable = e => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
-        recordedAudioUrl = URL.createObjectURL(blob);
-        const player = document.getElementById("user-audio-player");
-        player.src = recordedAudioUrl;
-      };
-
-      mediaRecorder.start(100);
     }
 
     function stopVoiceRecording() {
@@ -708,7 +715,6 @@
       });
     }
 
-    /* ★ 正解処理（isVoice: マイク経由で正解した時のみポップアップを表示） ★ */
     function handleSuccess(isVoice = false) {
       if (recognition) {
         try { recognition.abort(); } catch(e){}
@@ -729,12 +735,10 @@
       document.getElementById("instruction").textContent = "🎤 はなしてみよう！";
       
       if (isVoice) {
-        // マイクで喋って正解した時だけポップアップを表示
         setTimeout(() => {
           document.getElementById("voice-modal").style.display = "flex";
         }, 800);
       } else {
-        // 色タイルタップで正解した時は直接「次へ」ボタンを表示
         document.getElementById("next-btn").style.display = "inline-flex";
       }
     }
@@ -781,7 +785,7 @@
         tile.onclick = () => {
           initAudioContext();
           if (st.color === currentCorrectStage.color) {
-            handleSuccess(false); // タップによる正解（マイク未使用）
+            handleSuccess(false);
           } else {
             showFeedback("Try again! 🔍", "try-again");
             speakText("Try again!");
