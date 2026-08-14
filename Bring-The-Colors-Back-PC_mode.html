@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Help us Bring the Colors Back! (Ver.1 PC/Mobile)</title>
+  <title>Help us Bring the Colors Back! (Ver.1 PC/Mobile Fix)</title>
   <script src="auth.js"></script>
   <style>
     :root {
@@ -212,7 +212,6 @@
       transform: scale(0.88);
     }
 
-    /* ポップアップ（モーダル）スタイル */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -366,7 +365,6 @@
 
   <div class="color-grid" id="color-grid"></div>
 
-  <!-- 正解時に自分の声を再生できるシンプルモーダル -->
   <div class="modal-overlay" id="voice-modal">
     <div class="modal-card">
       <div class="modal-target-phrase" id="modal-target-phrase">a red flower</div>
@@ -708,7 +706,6 @@
       document.getElementById("instruction").textContent = "Say it! 🎤";
       
       if (isVoice) {
-        // 声で正解した場合、モーダルポップアップを表示
         document.getElementById("modal-target-phrase").textContent = stage.text;
         setTimeout(() => {
           document.getElementById("voice-modal").style.display = "flex";
@@ -724,7 +721,6 @@
       const stage = currentStages[currentStage];
       const isLastStage = (currentStage === currentStages.length - 1);
 
-      // モーダルを閉じる時にお祝いボイスを再生
       const storyVoice = isLastStage 
         ? `Good job! ${stage.color} is back!` 
         : `Good job! ${stage.color} is back! Now, let's bring back another color!`;
@@ -763,12 +759,12 @@
       }
     }
 
+    /* ★ リアルタイム正解参照へバグ修正 ★ */
     function renderColorOnlyTiles() {
       const grid = document.getElementById("color-grid");
       grid.innerHTML = "";
       
       const shuffledTiles = shuffleArray(masterStages);
-      const currentCorrectStage = currentStages[currentStage];
 
       shuffledTiles.forEach((st) => {
         const tile = document.createElement("div");
@@ -776,6 +772,8 @@
         tile.style.backgroundColor = st.hex;
         tile.onclick = () => {
           initAudioContext();
+          // タップした瞬間の「現在の正解」を取得する！
+          const currentCorrectStage = currentStages[currentStage];
           if (st.color === currentCorrectStage.color) {
             handleSuccess(false);
           } else {
