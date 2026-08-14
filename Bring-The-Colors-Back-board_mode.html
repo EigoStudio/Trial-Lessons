@@ -209,7 +209,6 @@
       transform: scale(0.88);
     }
 
-    /* ★ 録音ポップアップ（日本語削除スッキリ版） ★ */
     .rec-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -375,7 +374,6 @@
 
   <div class="color-grid" id="color-grid"></div>
 
-  <!-- ★ 日本語指示文をなくした、英語のみのポップアップ ★ -->
   <div class="rec-modal-overlay" id="rec-modal">
     <div class="rec-modal-card">
       <div class="modal-target-phrase" id="modal-target-phrase">a red flower</div>
@@ -653,22 +651,35 @@
       }
     }
 
+    /* ★ 音声ストーリーとエンディング制御の更新 ★ */
     function playModalAudio() {
       initAudioContext();
       const player = document.getElementById("user-audio-player");
       if (!player.src || player.src === "") return;
 
       const stage = currentStages[currentStage];
+      const isLastStage = (currentStage === currentStages.length - 1);
+
       player.currentTime = 0;
 
       player.onended = () => {
         closeRecordingModal();
 
-        const storyVoice = `Good job! ${stage.color} is back! Now, let's save another color!`;
+        // 1〜6色目は「bring back another color!」、最後の色(7色目)はそのまま決めフレーズのみ！
+        const storyVoice = isLastStage 
+          ? `Good job! ${stage.color} is back!` 
+          : `Good job! ${stage.color} is back! Now, let's bring back another color!`;
+
         document.getElementById("instruction").textContent = `${stage.color} is back! ✨`;
         
         speakText(storyVoice, () => {
-          document.getElementById("next-btn").style.display = "inline-flex";
+          if (isLastStage) {
+            // 7色目の音声が終わったら直ちにエンディングへ！
+            showCelebration();
+          } else {
+            // 1〜6色目は「次へ」ボタンを表示
+            document.getElementById("next-btn").style.display = "inline-flex";
+          }
         });
       };
 
