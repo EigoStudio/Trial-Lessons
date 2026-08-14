@@ -148,7 +148,7 @@
         .quiz-card.correct { border-color: #2ecc71; background-color: #e8f5e9; }
         .quiz-card.wrong { border-color: #e74c3c; background-color: #ffebee; opacity: 0.6; }
 
-        /* 2ページ目: 単語（Word）をつかんで色ブロック（Color）へドロップ */
+        /* 2ページ目: 単語（Word）をタップ ➔ 色（Color）をタップ */
         .drag-section {
             display: flex;
             gap: 12px;
@@ -157,22 +157,32 @@
             justify-content: center;
         }
         
-        /* つかむ側：単語チップのデザイン */
+        /* つかむ側：単語チップ */
         .word-chip {
             background: #ffffff;
-            border: 3px solid #4a90e2;
-            border-radius: 15px;
-            padding: 10px 20px;
+            border: 4px solid #4a90e2;
+            border-radius: 18px;
+            padding: 12px 24px;
             font-size: 1.5rem;
             font-weight: bold;
             color: #2c3e50;
-            cursor: grab;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            transition: transform 0.1s;
+            cursor: pointer;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
         }
-        .word-chip:active {
-            cursor: grabbing;
-            transform: scale(1.1);
+
+        /* 選択中のハイライト効果 */
+        .word-chip.selected {
+            border-color: #ff4081;
+            background: #fff0f6;
+            transform: scale(1.15);
+            box-shadow: 0 0 15px rgba(255, 64, 129, 0.5);
+            animation: pulseChip 0.8s infinite alternate;
+        }
+
+        @keyframes pulseChip {
+            0% { transform: scale(1.1); }
+            100% { transform: scale(1.18); }
         }
 
         /* 入れる側：色のドロップターゲット */
@@ -182,16 +192,21 @@
             gap: 15px;
         }
         .drop-target {
-            border: 3px solid #ffffff;
-            border-radius: 15px;
-            width: 120px;
-            height: 75px;
+            border: 4px solid #ffffff;
+            border-radius: 18px;
+            width: 125px;
+            height: 80px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             font-size: 1.2rem;
-            box-shadow: 0 5px rgba(0,0,0,0.15);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .drop-target:active {
+            transform: scale(0.95);
         }
 
         /* 3ページ目: お気に入りカラー */
@@ -254,23 +269,23 @@
             <button class="nav-btn" onclick="nextPage(2)" style="visibility: hidden;" id="next1">Next ➔</button>
         </div>
 
-        <!-- 2ページ目: 単語（Word）をつかむ ➔ 色（Color）にいれる -->
+        <!-- 2ページ目: 単語（Word）をタップ ➔ 色（Color）をタップ -->
         <div id="page2" class="page">
             <h2>Match the word to the color! <button class="speaker-btn" onclick="speak('Match the word to the color!')">🔊 Listen</button></h2>
-            <div class="instruction">Touch or drag the word! Listen to the sound!</div>
+            <div class="instruction">1. Tap a word 🔊 ➔ 2. Tap the matching color!</div>
             
-            <!-- 単語チップ（つかむ側） -->
+            <!-- 単語チップ（タップして選択） -->
             <div class="drag-section" id="block-container"></div>
             
-            <!-- 色のターゲット（入れる側） -->
+            <!-- 色のターゲット（タップして移動） -->
             <div class="drop-section">
-                <div class="drop-target" data-color="red" style="background:#ff4d4d; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
-                <div class="drop-target" data-color="yellow" style="background:#ffd633; color:#333;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
-                <div class="drop-target" data-color="pink" style="background:#ff69b4; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
-                <div class="drop-target" data-color="green" style="background:#2ecc71; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
-                <div class="drop-target" data-color="orange" style="background:#ff9f43; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
-                <div class="drop-target" data-color="purple" style="background:#9b59b6; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
-                <div class="drop-target" data-color="blue" style="background:#3498db; color:white;" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+                <div class="drop-target" data-color="red" style="background:#ff4d4d; color:white;" onclick="selectTargetColor('red', this)"></div>
+                <div class="drop-target" data-color="yellow" style="background:#ffd633; color:#333;" onclick="selectTargetColor('yellow', this)"></div>
+                <div class="drop-target" data-color="pink" style="background:#ff69b4; color:white;" onclick="selectTargetColor('pink', this)"></div>
+                <div class="drop-target" data-color="green" style="background:#2ecc71; color:white;" onclick="selectTargetColor('green', this)"></div>
+                <div class="drop-target" data-color="orange" style="background:#ff9f43; color:white;" onclick="selectTargetColor('orange', this)"></div>
+                <div class="drop-target" data-color="purple" style="background:#9b59b6; color:white;" onclick="selectTargetColor('purple', this)"></div>
+                <div class="drop-target" data-color="blue" style="background:#3498db; color:white;" onclick="selectTargetColor('blue', this)"></div>
             </div>
             
             <button class="nav-btn" onclick="nextPage(3)" style="visibility: hidden;" id="next2">Next ➔</button>
@@ -361,10 +376,12 @@
 
         const colors = ['red', 'yellow', 'pink', 'green', 'orange', 'purple', 'blue'];
         let scorePage2 = 0;
+        let selectedWordColor = null; // 現在タップして選択中の単語の色
 
-        /* 2ページ目のセットアップ：単語をつかんだ瞬間に音声が流れます */
+        /* 2ページ目のセットアップ */
         function setupPage2() {
             scorePage2 = 0;
+            selectedWordColor = null;
             document.getElementById('next2').style.visibility = 'hidden';
             const container = document.getElementById('block-container');
             container.innerHTML = '';
@@ -378,51 +395,48 @@
                 const chip = document.createElement('div');
                 chip.className = 'word-chip';
                 chip.textContent = color;
-                chip.draggable = true;
                 chip.id = 'word-' + color;
                 
-                // 単語をつかんだ瞬間に発音！
-                chip.addEventListener('dragstart', (e) => {
-                    e.dataTransfer.setData('text', color);
-                    speak(color); 
-                });
-
-                // タップのみでも聴けるように補言
-                chip.addEventListener('click', () => {
-                    speak(color);
-                });
+                // STEP 1: 単語チップをタップした時の処理
+                chip.onclick = () => {
+                    // 他のチップの選択表示を解除
+                    document.querySelectorAll('.word-chip').forEach(c => c.classList.remove('selected'));
+                    
+                    // タップされたチップを選択状態にし、音声再生
+                    chip.classList.add('selected');
+                    selectedWordColor = color;
+                    speak(color); // 「Red!」と読み上げ
+                };
 
                 container.appendChild(chip);
             });
         }
 
-        function allowDrop(e) { e.preventDefault(); }
-
-        function drop(e) {
-            e.preventDefault();
-            const draggedColor = e.dataTransfer.getData('text');
-            if (!draggedColor) return;
-            
-            let target = e.target;
-            while(target && !target.classList.contains('drop-target')) {
-                target = target.parentElement;
+        /* STEP 2: 移動先の色ブロックをタップした時の判定処理 */
+        function selectTargetColor(targetColor, targetElement) {
+            // 単語が選択されていない場合は何もしない（あるいは案内音声を流す）
+            if (!selectedWordColor) {
+                speak("Tap a word first!");
+                return;
             }
-            if(!target) return;
-            
-            const targetColor = target.getAttribute('data-color');
 
-            if(draggedColor === targetColor) {
-                target.innerHTML = `<span style="font-size:1.3rem; font-weight:bold;">✨ ${targetColor} ✨</span>`;
+            // 正解判定（選択した単語の色と、タップしたブロックの色が一致）
+            if (selectedWordColor === targetColor) {
+                targetElement.innerHTML = `<span style="font-size:1.3rem; font-weight:bold;">✨ ${targetColor} ✨</span>`;
                 
-                const wordChip = document.getElementById('word-' + draggedColor);
-                if(wordChip) wordChip.style.display = 'none';
+                // 成功した単語チップを消す
+                const wordChip = document.getElementById('word-' + selectedWordColor);
+                if (wordChip) wordChip.style.display = 'none';
+                
+                selectedWordColor = null; // 選択状態をリセット
                 
                 scorePage2++;
-                if(scorePage2 === 7) {
+                if (scorePage2 === 7) {
                     document.getElementById('next2').style.visibility = 'visible';
                     setTimeout(() => { speak('Great job!'); }, 300);
                 }
             } else {
+                // 不正解の場合
                 speak("Try again!");
             }
         }
