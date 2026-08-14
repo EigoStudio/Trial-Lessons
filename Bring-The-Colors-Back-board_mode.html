@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Help us Bring the Colors Back! (Ver.2 Board Fix)</title>
+  <title>Help us Bring the Colors Back! (Ver.2 Board Multi-Stage Fix)</title>
   <script src="auth.js"></script>
   <style>
     :root {
@@ -406,6 +406,22 @@
       if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
+    /* ★ RICOH用：マイク・音声の完全リセット関数 ★ */
+    function cleanupAudioResources() {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        try { mediaRecorder.stop(); } catch(e){}
+      }
+      if (activeStream) {
+        try {
+          activeStream.getTracks().forEach(track => track.stop());
+        } catch(e){}
+        activeStream = null;
+      }
+      mediaRecorder = null;
+      audioChunks = [];
+      isRecording = false;
+    }
+
     function playStartSound() {
       initAudioContext();
       const now = audioCtx.currentTime;
@@ -482,6 +498,8 @@
     }
 
     function initStage() {
+      cleanupAudioResources(); // ステージ切り替え時にマイクを完全クリア
+
       const stage = currentStages[currentStage];
       
       const targetIcon = document.getElementById("target-icon");
@@ -500,13 +518,6 @@
       const speakBtn = document.getElementById("speak-btn");
       speakBtn.textContent = "🎤";
       speakBtn.classList.remove("recording");
-      isRecording = false;
-
-      // 古いストリームを確実に破棄
-      if (activeStream) {
-        activeStream.getTracks().forEach(t => t.stop());
-        activeStream = null;
-      }
 
       renderColorOnlyTiles();
 
@@ -530,7 +541,6 @@
       speakText(stage.text);
     }
 
-    /* ★ マイク録音処理（シンプル化） ★ */
     async function toggleRecording() {
       initAudioContext();
       if (window.speechSynthesis) window.speechSynthesis.cancel();
@@ -539,7 +549,13 @@
 
       if (!isRecording) {
         try {
-          // ボタンタップ時に直接アクセス要求
+          // 前回の残骸を念のため完全クローズ
+          if (activeStream) {
+            activeStream.getTracks().forEach(t => t.stop());
+            activeStream = null;
+          }
+
+          // 毎回新規でデバイス権限を取得
           activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           audioChunks = [];
 
@@ -566,6 +582,7 @@
             const player = document.getElementById("user-audio-player");
             player.src = recordedAudioUrl;
 
+            // スピーカー出力へ安全に切り替えるため、トラックを完全切断！
             if (activeStream) {
               activeStream.getTracks().forEach(track => track.stop());
               activeStream = null;
@@ -583,7 +600,8 @@
 
         } catch (err) {
           console.log("マイク起動エラー:", err);
-          alert("ブラウザのマイク許可を確認してください。");
+          cleanupAudioResources();
+          alert("マイクが起動できませんでした。もう一度ボタンを押してください。");
         }
 
       } else {
@@ -597,7 +615,6 @@
       }
     }
 
-    /* ★ 自分の声の再生後に「Good job! 〇〇 is back!」のお祝いボイス ★ */
     function playRecordedAudio() {
       initAudioContext();
       const player = document.getElementById("user-audio-player");
@@ -672,6 +689,7 @@
     }
 
     function showCelebration() {
+      cleanupAudioResources();
       playFanfare();
       document.getElementById("celebration").style.display = "flex";
       startConfetti();
@@ -694,6 +712,7 @@
     }
 
     function resetGame() {
+      cleanupAudioResources();
       currentStage = 0;
       document.querySelectorAll(".rainbow-segment").forEach(s => s.classList.remove("active"));
       document.getElementById("celebration").style.display = "none";
