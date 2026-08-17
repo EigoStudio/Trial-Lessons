@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>English Board Game</title>
+  <title>Help us bring back the colors! - Board Game</title>
   <style>
     :root {
       --bg-color: #f0f4f8;
@@ -532,9 +532,24 @@
     }
     .btn-choice.yes { color: #16a34a; }
     .btn-choice.no { color: #dc2626; }
-    .btn-choice.selected {
-      border-color: #3b82f6;
-      background: #eff6ff;
+    
+    /* 正解・不正解時の視覚フィードバック */
+    .btn-choice.correct {
+      border-color: #22c55e !important;
+      background: #f0fdf4 !important;
+      color: #15803d !important;
+    }
+    .btn-choice.wrong {
+      border-color: #ef4444 !important;
+      background: #fef2f2 !important;
+      color: #b91c1c !important;
+      animation: shake 0.3s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
     }
 
     /* Recording Area */
@@ -689,7 +704,7 @@
   <!-- Header -->
   <header>
     <div class="title-area">
-      <h1>🎲 English Board Game</h1>
+      <h1>🎲 Help us bring back the colors!</h1>
       <span class="status-badge" id="board-status">30 Spaces</span>
     </div>
     <div class="controls-area">
@@ -803,19 +818,20 @@
   <script>
     /* 
       Master Challenge Cards Pool (30 Cards)
+      - "A pink heart." -> Media: 💖 -> Answer: true
     */
     const masterChallengeCards = [
       { type: 'yesno', question: "A green frog.", media: "🐸", answer: true },
       { type: 'yesno', question: "Three flowers.", media: "🌸🌸🌸🌸", answer: false },
       { type: 'yesno', question: "It's a rainbow.", media: "🌈", answer: true },
-      { type: 'yesno', question: "A pink T-shirt.", media: "👕", answer: false },
+      { type: 'yesno', question: "A pink t-shirt.", media: "👕", answer: false },
       { type: 'rec', question: "What's this? / A pink pig.", media: "🐷", targetText: "A pink pig." },
       
       { type: 'yesno', question: "A yellow star.", media: "⭐️", answer: true },
       { type: 'yesno', question: "A red apple.", media: "🍎", answer: true },
       { type: 'yesno', question: "A blue car.", media: "🚗", answer: false },
       { type: 'yesno', question: "Two bananas.", media: "🍌🍌", answer: true },
-      { type: 'rec', question: "What's this? / A green frog.", media: "🐸", targetText: "A green frog." },
+      { type: 'rec', question: "What's this? / A green tree.", media: "🌳", targetText: "A green tree." },
 
       { type: 'yesno', question: "A purple eggplant.", media: "🍆", answer: true },
       { type: 'yesno', question: "Five balloons.", media: "🎈🎈🎈", answer: false },
@@ -825,21 +841,21 @@
 
       { type: 'yesno', question: "A green tree.", media: "🌳", answer: true },
       { type: 'yesno', question: "Seven stars.", media: "⭐️⭐️⭐️⭐️⭐️", answer: false },
-      { type: 'yesno', question: "A pink heart.", media: "🩷", answer: true },
+      { type: 'yesno', question: "A pink heart.", media: "💖", answer: true },
       { type: 'yesno', question: "Eight apples.", media: "🍎🍎🍎🍎🍎🍎🍎🍎", answer: true },
-      { type: 'rec', question: "What's this? / A blue T-shirt.", media: "👕", targetText: "A blue T-shirt." },
+      { type: 'rec', question: "What's this? / A blue t-shirt.", media: "👕", targetText: "A blue t-shirt." },
 
       { type: 'yesno', question: "Nine bananas.", media: "🍌🍌🍌🍌🍌🍌🍌🍌🍌", answer: true },
       { type: 'yesno', question: "A red flower.", media: "🌹", answer: true },
       { type: 'yesno', question: "Ten balloons.", media: "🎈🎈🎈🎈🎈🎈🎈", answer: false },
-      { type: 'yesno', question: "A yellow bird.", media: "🐤", answer: true },
+      { type: 'yesno', question: "A yellow dress.", media: "👗", answer: false },
       { type: 'rec', question: "What's this? / A yellow star.", media: "⭐️", targetText: "A yellow star." },
 
       { type: 'yesno', question: "Four books.", media: "📙📙📙📙", answer: true },
-      { type: 'yesno', question: "Purple grapes.", media: "🍇", answer: true },
+      { type: 'yesno', question: "Green grapes.", media: "🍇", answer: false },
       { type: 'yesno', question: "Ten strawberries.", media: "🍓🍓🍓🍓🍓🍓🍓🍓🍓🍓", answer: true },
-      { type: 'rec', question: "What's this? / A red apple.", media: "🍎", targetText: "A red apple." },
-      { type: 'rec', question: "FINAL CHALLENGE! Say 'Rainbow!'", media: "🌈🎉", targetText: "Rainbow!" }
+      { type: 'rec', question: "What's this? / A red flower.", media: "🌹", targetText: "A red flower." },
+      { type: 'rec', question: "What's this? / An orange book.", media: "📙", targetText: "An orange book." }
     ];
 
     // Card Deck Stack for Drawing
@@ -1080,14 +1096,12 @@
 
           setTimeout(step, 350);
         } else {
-          // Finished moving steps OR reached Goal space (Space 29)
           if (p.pos >= 29) {
             p.pos = 29;
             renderPlayers();
             updateSidePanel();
           }
 
-          // In BOTH normal spaces AND Goal space, must Draw a card!
           document.getElementById("btn-draw-card").style.display = "block";
           speakText("Draw a card!");
         }
@@ -1096,17 +1110,15 @@
       step();
     }
 
-    /* Draw 1 Card from Deck (Consumes Card) */
+    /* Draw 1 Card from Deck */
     function drawCardFromDeck() {
       document.getElementById("btn-draw-card").style.display = "none";
       isRolling = false;
 
-      // Re-shuffle if deck is completely empty
       if (cardDeck.length === 0) {
         cardDeck = shuffleArray(masterChallengeCards);
       }
 
-      // Pop (consume) one card from the deck
       currentDrawnCard = cardDeck.pop();
       openCardModal(currentDrawnCard);
     }
@@ -1115,7 +1127,6 @@
     function openCardModal(card) {
       const p = players[currentPlayer];
       
-      // If at Goal Space, mark tag as FINAL CHALLENGE
       if (p.pos === 29) {
         document.getElementById("card-type-tag").textContent = "🏆 FINAL CHALLENGE 👑";
       } else {
@@ -1133,8 +1144,12 @@
       if (card.type === 'yesno') {
         yesnoSec.style.display = "flex";
         recSec.style.display = "none";
-        document.getElementById("btn-yes").classList.remove("selected");
-        document.getElementById("btn-no").classList.remove("selected");
+        
+        // Reset choice button states
+        const yesBtn = document.getElementById("btn-yes");
+        const noBtn = document.getElementById("btn-no");
+        yesBtn.classList.remove("correct", "wrong");
+        noBtn.classList.remove("correct", "wrong");
       } else {
         yesnoSec.style.display = "none";
         recSec.style.display = "flex";
@@ -1154,9 +1169,24 @@
       }
     }
 
+    /* Yes/No 判定と視覚フィードバック */
     function selectChoice(isYes) {
-      document.getElementById("btn-yes").classList.toggle("selected", isYes);
-      document.getElementById("btn-no").classList.toggle("selected", !isYes);
+      const yesBtn = document.getElementById("btn-yes");
+      const noBtn = document.getElementById("btn-no");
+
+      yesBtn.classList.remove("correct", "wrong");
+      noBtn.classList.remove("correct", "wrong");
+
+      if (!currentDrawnCard) return;
+
+      const targetBtn = isYes ? yesBtn : noBtn;
+      const isCorrect = (isYes === currentDrawnCard.answer);
+
+      if (isCorrect) {
+        targetBtn.classList.add("correct");
+      } else {
+        targetBtn.classList.add("wrong");
+      }
     }
 
     /* Audio Recording */
@@ -1219,24 +1249,19 @@
       const p = players[currentPlayer];
 
       if (action === 'ok') {
-        // Teacher pressed OK! Check if player is at Goal
         if (p.pos === 29) {
-          // Reached Goal AND passed the final challenge -> WINNER!
           showCelebration();
           return;
         }
       } else if (action === 'ng') {
-        // Teacher pressed Go back! -> Send back to previous position
         p.pos = previousPositions[currentPlayer];
         renderPlayers();
       }
 
-      // Next Player
       currentPlayer = (currentPlayer + 1) % playerCount;
       updateSidePanel();
       document.getElementById("btn-roll").disabled = false;
 
-      // Announce Next Turn
       speakText(`${players[currentPlayer].name}, it's your turn! Roll the dice!`);
     }
 
