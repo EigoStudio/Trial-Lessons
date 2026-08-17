@@ -187,8 +187,6 @@
       justify-content: center;
       gap: 6px;
     }
-    .success { color: #2ecc71; }
-    .try-again { color: #e67e22; }
 
     .color-grid {
       display: grid;
@@ -209,6 +207,7 @@
       transform: scale(0.88);
     }
 
+    /* Modal Styling for Recording & AI Recognition */
     .rec-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -222,42 +221,68 @@
     .rec-modal-card {
       background: #ffffff;
       border-radius: 28px;
-      padding: 28px 20px 24px 20px;
-      width: 85%;
-      max-width: 320px;
+      padding: 24px 20px;
+      width: 90%;
+      max-width: 360px;
       text-align: center;
       box-shadow: 0 12px 32px rgba(0,0,0,0.3);
       animation: modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
     }
     @keyframes modal-pop {
       0% { transform: scale(0.7); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
     .modal-target-phrase {
-      font-size: 1.6rem;
+      font-size: 1.5rem;
       font-weight: 900;
       color: #2c3e50;
-      margin-bottom: 20px;
     }
     .btn-modal-rec {
-      width: 84px;
-      height: 84px;
-      font-size: 2.7rem;
+      width: 76px;
+      height: 76px;
+      font-size: 2.3rem;
       border-radius: 50%;
       border: none;
       color: white;
       background: linear-gradient(135deg, #e74c3c, #c0392b);
       cursor: pointer;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+      box-shadow: 0 6px 16px rgba(231, 76, 60, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
     }
     .btn-modal-rec.recording {
       animation: pulse 1s infinite;
       background: linear-gradient(135deg, #2ecc71, #27ae60);
     }
-    .btn-modal-play {
-      background: linear-gradient(135deg, #9b59b6, #8e44ad);
-      display: none;
+
+    .speech-transcript-box {
+      min-height: 38px;
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 8px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
     }
+    .speech-status-text {
+      font-size: 0.95rem;
+      font-weight: bold;
+      min-height: 1.2em;
+    }
+    .speech-status-text.ok { color: #16a34a; }
+    .speech-status-text.ng { color: #dc2626; }
 
     .intro-overlay {
       position: fixed;
@@ -374,13 +399,18 @@
 
   <div class="color-grid" id="color-grid"></div>
 
+  <!-- Speech Recognition Popup Modal -->
   <div class="rec-modal-overlay" id="rec-modal">
     <div class="rec-modal-card">
       <div class="modal-target-phrase" id="modal-target-phrase">a red flower</div>
-      <div>
-        <button class="btn-modal-rec" id="modal-rec-btn" onclick="toggleModalRecording()">🎤</button>
-        <button class="btn-modal-rec btn-modal-play" id="modal-play-btn" onclick="playModalAudio()">▶️</button>
+      <div style="font-size:0.85rem; color:#64748b; font-weight:bold;">Push to Speak! 🎤</div>
+      
+      <button class="btn-modal-rec" id="modal-rec-btn" onclick="handleSpeechStart()">🎤</button>
+      
+      <div class="speech-transcript-box" id="speech-transcript-box">
+        Press 🎤 and speak in English!
       </div>
+      <div class="speech-status-text" id="speech-status-text"></div>
     </div>
   </div>
 
@@ -404,8 +434,6 @@
     <button class="btn-start" style="padding: 14px 28px;" onclick="resetGame()">🔄 もういっかい</button>
   </div>
 
-  <audio id="user-audio-player" style="display:none;"></audio>
-
   <script>
     const masterStages = [
       { color: "Red", hex: "#ff4d4d", bg: "#fff5f5", text: "a red flower", icon: "🌹" },
@@ -419,11 +447,10 @@
 
     let currentStages = [];
     let currentStage = 0;
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let recordedAudioUrl = null;
-    let modalStream = null;
-    let isModalRecording = false;
+    
+    // Speech Recognition API & Controls
+    let recognition = null;
+    let isSpeechListening = false;
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -556,11 +583,14 @@
     function speakText(text, onEndedCallback) {
       initAudioContext();
       if (window.speechSynthesis) window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
+      
+      let adjustedText = text.replace(/\bLucy\b/gi, "Loosee");
+
+      const utterance = new SpeechSynthesisUtterance(adjustedText);
       if (preferredVoice) utterance.voice = preferredVoice;
       utterance.lang = "en-US";
-      utterance.rate = 0.65;
-      utterance.pitch = 1.15;
+      utterance.rate = 0.70;
+      utterance.pitch = 1.10;
       if (onEndedCallback) utterance.onend = onEndedCallback;
       window.speechSynthesis.speak(utterance);
     }
@@ -575,117 +605,134 @@
       const stage = currentStages[currentStage];
       document.getElementById("modal-target-phrase").textContent = stage.text;
       
-      document.getElementById("modal-rec-btn").style.display = "inline-block";
-      document.getElementById("modal-rec-btn").textContent = "🎤";
-      document.getElementById("modal-rec-btn").classList.remove("recording");
-      document.getElementById("modal-play-btn").style.display = "none";
+      const recBtn = document.getElementById("modal-rec-btn");
+      recBtn.textContent = "🎤";
+      recBtn.classList.remove("recording");
+      
+      document.getElementById("speech-transcript-box").textContent = "Press 🎤 and speak in English!";
+      document.getElementById("speech-status-text").textContent = "";
+      document.getElementById("speech-status-text").className = "speech-status-text";
 
-      isModalRecording = false;
       document.getElementById("rec-modal").style.display = "flex";
     }
 
     function closeRecordingModal() {
       document.getElementById("rec-modal").style.display = "none";
-      if (modalStream) {
-        try { modalStream.getTracks().forEach(t => t.stop()); } catch(e){}
-        modalStream = null;
-      }
     }
 
-    async function toggleModalRecording() {
+    /* Web Speech API による判定・録音処理 */
+    function handleSpeechStart() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        alert("Speech Recognition is not supported in this browser. Please use Chrome or Edge.");
+        return;
+      }
+
+      if (isSpeechListening) return;
+
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
       const recBtn = document.getElementById("modal-rec-btn");
+      const transcriptBox = document.getElementById("speech-transcript-box");
+      const statusText = document.getElementById("speech-status-text");
 
-      if (!isModalRecording) {
-        try {
-          modalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          audioChunks = [];
+      recBtn.classList.add("recording");
+      transcriptBox.textContent = "Listening... 🎧 Say it now!";
+      statusText.textContent = "";
+      isSpeechListening = true;
 
-          let options = {};
-          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-            options = { mimeType: 'audio/webm;codecs=opus' };
-          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-            options = { mimeType: 'audio/mp4' };
-          }
+      recognition.start();
 
-          mediaRecorder = new MediaRecorder(modalStream, options);
-
-          mediaRecorder.ondataavailable = e => {
-            if (e.data.size > 0) audioChunks.push(e.data);
-          };
-
-          mediaRecorder.onstop = () => {
-            const mimeType = mediaRecorder ? mediaRecorder.mimeType : 'audio/wav';
-            const blob = new Blob(audioChunks, { type: mimeType });
-            
-            if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
-            recordedAudioUrl = URL.createObjectURL(blob);
-            
-            const player = document.getElementById("user-audio-player");
-            player.src = recordedAudioUrl;
-
-            if (modalStream) {
-              modalStream.getTracks().forEach(t => t.stop());
-              modalStream = null;
-            }
-
-            recBtn.style.display = "none";
-            document.getElementById("modal-play-btn").style.display = "inline-block";
-          };
-
-          mediaRecorder.start(100);
-          isModalRecording = true;
-          recBtn.textContent = "👂";
-          recBtn.classList.add("recording");
-
-        } catch (err) {
-          console.log("ポップアップマイク起動エラー:", err);
-          alert("マイクが起動できませんでした。もう一度お試しください。");
-        }
-
-      } else {
-        isModalRecording = false;
+      recognition.onresult = (event) => {
+        isSpeechListening = false;
         recBtn.classList.remove("recording");
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-          mediaRecorder.stop();
+
+        let spokenText = event.results[0][0].transcript.toLowerCase().trim();
+        const stage = currentStages[currentStage];
+        const target = stage.text.toLowerCase();
+
+        // 代名詞「He」の誤認識補正
+        if (target.startsWith("he ")) {
+          spokenText = spokenText.replace(/^(she|they|it)\b/i, "he");
         }
-      }
+
+        transcriptBox.textContent = `You said: "${spokenText}"`;
+
+        const isPassed = checkStrictSpeechMatch(spokenText, target);
+
+        if (isPassed) {
+          statusText.textContent = "⭕ Great job! Perfect!";
+          statusText.className = "speech-status-text ok";
+          
+          // 正解テキストを読み上げてからモーダルを閉じる
+          speakText(`Great job! ${stage.text}`, () => {
+            setTimeout(() => {
+              closeRecordingModal();
+              onRecordingPassed();
+            }, 500);
+          });
+        } else {
+          statusText.textContent = "❌ Try again! (正しく発音・発言してみよう)";
+          statusText.className = "speech-status-text ng";
+          speakText("Try again!");
+        }
+      };
+
+      recognition.onerror = () => {
+        isSpeechListening = false;
+        recBtn.classList.remove("recording");
+        transcriptBox.textContent = "Could not hear clearly. Try again! 🎤";
+      };
+
+      recognition.onend = () => {
+        isSpeechListening = false;
+        recBtn.classList.remove("recording");
+      };
     }
 
-    /* ★ 音声ストーリーとエンディング制御の更新 ★ */
-    function playModalAudio() {
-      initAudioContext();
-      const player = document.getElementById("user-audio-player");
-      if (!player.src || player.src === "") return;
+    /* 判定用関数（a / an などの冠詞や主要単語判定を最適化） */
+    function checkStrictSpeechMatch(spoken, target) {
+      if (!target) return true;
 
+      const cleanSpoken = spoken.replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean);
+      const cleanTarget = target.replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean);
+
+      // 冠詞・一般的な助動詞・前置詞を除外（"a", "an", "the" の違いで不合格にならないようにする）
+      const stopWords = ['a', 'an', 'the', 'is', 'am', 'are', 'to', 'in', 'at', 'on'];
+      const keyTargetWords = cleanTarget.filter(w => !stopWords.includes(w));
+      const checkWords = keyTargetWords.length > 0 ? keyTargetWords : cleanTarget;
+
+      let matchCount = 0;
+      checkWords.forEach(kw => {
+        // 部分一致または完全一致（eggplant などの長めの単語もヒットしやすく）
+        const hasMatch = cleanSpoken.some(sw => sw === kw || sw.includes(kw) || kw.includes(sw));
+        if (hasMatch) matchCount++;
+      });
+
+      return matchCount === checkWords.length;
+    }
+
+    /* 正解判定クリア後のストーリー自動進行 */
+    function onRecordingPassed() {
       const stage = currentStages[currentStage];
       const isLastStage = (currentStage === currentStages.length - 1);
 
-      player.currentTime = 0;
+      const storyVoice = isLastStage 
+        ? `Good job! ${stage.color} is back!` 
+        : `Good job! ${stage.color} is back! Now, let's bring back another color!`;
 
-      player.onended = () => {
-        closeRecordingModal();
-
-        // 1〜6色目は「bring back another color!」、最後の色(7色目)はそのまま決めフレーズのみ！
-        const storyVoice = isLastStage 
-          ? `Good job! ${stage.color} is back!` 
-          : `Good job! ${stage.color} is back! Now, let's bring back another color!`;
-
-        document.getElementById("instruction").textContent = `${stage.color} is back! ✨`;
-        
-        speakText(storyVoice, () => {
-          if (isLastStage) {
-            // 7色目の音声が終わったら直ちにエンディングへ！
-            showCelebration();
-          } else {
-            // 1〜6色目は「次へ」ボタンを表示
-            document.getElementById("next-btn").style.display = "inline-flex";
-          }
-        });
-      };
-
-      player.play().catch(e => {
-        console.log("再生エラー:", e);
-        closeRecordingModal();
+      document.getElementById("instruction").textContent = `${stage.color} is back! ✨`;
+      
+      speakText(storyVoice, () => {
+        if (isLastStage) {
+          showCelebration();
+        } else {
+          document.getElementById("next-btn").style.display = "inline-flex";
+        }
       });
     }
 
