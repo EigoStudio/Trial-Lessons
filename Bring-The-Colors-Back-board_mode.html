@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Help us Bring the Colors Back! (Ver.2 Board English Only Modal)</title>
+  <title>Help us bring back the colors!</title>
   <script src="auth.js"></script>
   <style>
     :root {
@@ -36,11 +36,11 @@
     }
 
     h1 {
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       color: #2c3e50;
       margin: 2px 0 6px 0;
       text-align: center;
-      font-weight: 800;
+      font-weight: 900;
     }
 
     .rainbow-bar {
@@ -167,6 +167,18 @@
       padding: 14px 28px;
       cursor: pointer;
     }
+    .btn-print {
+      border: none;
+      border-radius: 50px;
+      color: white;
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      font-size: 1.1rem;
+      font-weight: bold;
+      padding: 12px 24px;
+      cursor: pointer;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
     @keyframes bounce-btn {
       0% { transform: scale(1); }
       100% { transform: scale(1.1); }
@@ -283,14 +295,14 @@
       margin-bottom: 6px;
     }
     .intro-text {
-      font-size: 1rem;
+      font-size: 0.95rem;
       line-height: 1.5;
       max-width: 360px;
       margin-bottom: 20px;
       color: #f5f6fa;
     }
     .english-msg {
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       font-weight: 800;
       color: #74b9ff;
       margin-bottom: 12px;
@@ -338,11 +350,67 @@
       0% { transform: translateY(0) rotate(0deg); opacity: 1; }
       100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
     }
+
+    /* 印刷専用エリア（画面表示時は非表示） */
+    .print-only {
+      display: none;
+    }
+
+    /* 横向き（Landscape）印刷設定 */
+    @media print {
+      @page {
+        size: landscape;
+        margin: 10mm;
+      }
+      
+      body * {
+        visibility: hidden;
+      }
+      
+      .print-only, .print-only * {
+        visibility: visible;
+      }
+      
+      .print-only {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        text-align: center;
+      }
+      
+      .print-only h1 {
+        font-size: 28pt;
+        margin: 0 0 4pt 0;
+        color: #000;
+        font-family: 'Comic Sans MS', 'Chalkboard SE', 'Helvetica Neue', sans-serif;
+        letter-spacing: 1px;
+      }
+      
+      .print-only p {
+        font-size: 16pt;
+        margin: 0 0 12pt 0;
+        color: #333;
+        font-weight: bold;
+      }
+      
+      .print-only img {
+        max-width: 90%;
+        max-height: 70vh;
+        object-fit: contain;
+      }
+    }
   </style>
 </head>
 <body class="grayscale-mode">
 
-  <h1>🌈 Rainbow Crystal English</h1>
+  <h1>🌈 Help us bring back the colors!</h1>
 
   <div class="rainbow-bar">
     <div class="rainbow-segment" id="seg-0" style="background:#ff4d4d;"></div>
@@ -384,13 +452,13 @@
 
   <div class="intro-overlay" id="intro-overlay">
     <div class="intro-character">🥺🌈</div>
-    <div class="intro-title">たいへん！</div>
-    <span class="english-msg">"Help us bring the colors back!"</span>
+    <div class="intro-title">Look! The world lost its color!</div>
+    <span class="english-msg">"Help us bring back the colors!"</span>
     <div class="intro-text">
-      この世の中から 色が消えてしまったの…！<br>
-      おとをよくきいて、正しい色をぬってあげよう！
+      Listen, speak, and bring back the colors!<br>
+      （おとをよくきいて、正しい色を取り戻そう！）
     </div>
-    <button class="btn-start" onclick="startGame()">🚀 スタート！</button>
+    <button class="btn-start" onclick="startGame()">🚀 Start!</button>
   </div>
 
   <div class="confetti-container" id="confetti-container"></div>
@@ -398,8 +466,16 @@
   <div class="celebration" id="celebration">
     <div style="font-size: 4rem;">🎉🌈✨</div>
     <h2>Great Job!</h2>
-    <p>世界に にじの7色が もどってきたよ！</p>
-    <button class="btn-start" style="padding: 14px 28px;" onclick="resetGame()">🔄 もういっかい</button>
+    <p>You brought back all the colors!</p>
+    <button class="btn-print" onclick="window.print()">🖨️ Print out the coloring sheet</button>
+    <button class="btn-start" style="padding: 14px 28px;" onclick="resetGame()">🔄 Play Again</button>
+  </div>
+
+  <!-- 印刷用レイアウト（横向きA4サイズにフィット） -->
+  <div class="print-only">
+    <h1>Look! The World Lost Its Color!</h1>
+    <p>Help us bring back the colors!</p>
+    <img src="images-bring-the-colors-back/gray-world.jpeg" alt="Coloring Activity Sheet">
   </div>
 
   <audio id="user-audio-player" style="display:none;"></audio>
